@@ -148,7 +148,7 @@ app.post('/api/count_objects', async (req, res) => {
         .json({ message: 'User ID, stockName, and sold are required' });
     }
 
-    // Find the stockName in the database
+    // Find the stock item
     const stock = await Stock.findOne({ stockName: stockName });
     if (!stock) {
       return res
@@ -156,14 +156,31 @@ app.post('/api/count_objects', async (req, res) => {
         .json({ message: `Stock item '${stockName}' not found` });
     }
 
-    // ✅ Update the stock's sold in MongoDB
-    await Stock.updateOne({ stockName: stockName }, { $set: { sold: sold } });
+    // 🛑 Ensure availableStock never goes negative
+    if (stock.availableStock < sold) {
+      return res
+        .status(400)
+        .json({
+          message: `Not enough stock available. Only ${stock.availableStock} left.`,
+        });
+    }
 
-    // ✅ Log the activity and associate it with the stock
+    // ✅ Update stock: subtract `sold` from `availableStock`
+    const updatedStock = await Stock.updateOne(
+      { stockName: stockName },
+      {
+        $inc: {
+          availableStock: -sold, // Subtract sold from available stock
+          sold: sold, // Increase sold count
+        },
+      }
+    );
+
+    // ✅ Log the activity
     await Activity.create({
       userId,
       action: `Updated count for ${stockName}`,
-      stockId: stock._id, // ✅ Associate stockName
+      stockId: stock._id,
       sold,
     });
 
@@ -301,7 +318,8 @@ app.delete('/api/stocks/:stockName', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});6   
+});
+6;
 
 const PORT = 2000;
 app.listen(PORT, () => {
