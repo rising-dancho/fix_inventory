@@ -137,8 +137,12 @@ class _TensorflowLiteState extends State<TensorflowLite> {
 
         // 🔥 Log detected object count to the backend
         if (_selectedStock != null) {
+          debugPrint("⚠️ No stock selected, skipping log.");
           String? userId =
               await SharedPrefsService.getUserId(); // ✅ Directly get the userId
+          if (userId == null) {
+            debugPrint("❌ User ID not found, cannot log data.");
+          }
 
           if (userId != null) {
             var response = await API.logStockCurrentCount(
@@ -210,6 +214,7 @@ class _TensorflowLiteState extends State<TensorflowLite> {
       editableBoundingBoxes = detectedObjects
           .map((obj) => obj.boundingBox)
           .toList(); // ✅ Ensure ML-detected boxes are editable
+      debugPrint("📌 Detected Count: ${editableBoundingBoxes.length}");
     });
 
     // debugPrint bounding boxes AFTER being added to editableBoundingBoxes

@@ -135,75 +135,7 @@ app.post('/api/login', async (req, res) => {
 
 // NUMBER OF STOCKS and DETECTIONS DATA -------------
 
-// Get all stock
-app.get('/api/stocks', async (req, res) => {
-  const stocks = await Stock.find();
-  res.json(stocks);
-});
-
-// Save stock categories
-app.post('/api/stocks', async (req, res) => {
-  try {
-    for (const stockItem of req.body) {
-      await Stock.findOneAndUpdate(
-        { stockName: stockItem.stockName }, // Ensure correct search query
-        {
-          totalStock: stockItem.totalStock,
-          availableStock: stockItem.totalStock - (stockItem.sold ?? 0), // Ensure availableStock updates
-        },
-        { upsert: true, new: true }
-      );
-    }
-    res.json({ message: 'Stock updated successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/api/stocks/:stockName', async (req, res) => {
-  try {
-    const stockName = req.params.stockName;
-    await Stock.deleteOne({ stockName: stockName }); // ✅ Fix field name
-    res.json({ message: `Deleted ${stockName} successfully` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// CREATES A COUNT LOG FOR THE ACTIVITY LOGS WIDGET
 app.post('/api/count_objects', async (req, res) => {
   try {
     // Extract values from request body
@@ -335,6 +267,41 @@ app.get('/api/activity_logs/', async (req, res) => {
   }
   // EXPLANATION ON ABOUT ACTIVITY LOGS PER USERID AND ALL ACTIVITY LOGS PER USER: https://chatgpt.com/share/67e6097f-8c94-8000-940d-5ecd8c54bb09
 });
+
+// Get all stock
+app.get('/api/stocks', async (req, res) => {
+  const stocks = await Stock.find();
+  res.json(stocks);
+});
+
+// Save stock categories
+app.post('/api/stocks', async (req, res) => {
+  try {
+    for (const stockItem of req.body) {
+      await Stock.findOneAndUpdate(
+        { stockName: stockItem.stockName }, // Ensure correct search query
+        {
+          totalStock: stockItem.totalStock,
+          availableStock: stockItem.totalStock - (stockItem.sold ?? 0), // Ensure availableStock updates
+        },
+        { upsert: true, new: true }
+      );
+    }
+    res.json({ message: 'Stock updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/stocks/:stockName', async (req, res) => {
+  try {
+    const stockName = req.params.stockName;
+    await Stock.deleteOne({ stockName: stockName }); // ✅ Fix field name
+    res.json({ message: `Deleted ${stockName} successfully` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});6   
 
 const PORT = 2000;
 app.listen(PORT, () => {

@@ -151,13 +151,13 @@ class API {
   }
 
   static Future<Map<String, dynamic>?> logStockCurrentCount(
-      String userId, String stockItem, int countedAmount) async {
+      String userId, String stockItem, int sold) async {
     var url = Uri.parse("${baseUrl}count_objects");
 
     Map<String, dynamic> requestBody = {
       "userId": userId,
-      "item": stockItem,
-      "countedAmount": countedAmount,
+      "stockName": stockItem,
+      "sold": sold,
     };
 
     debugPrint("🔄 Sending request to: $url");
@@ -174,13 +174,14 @@ class API {
       debugPrint("📝 Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Return the response data
+        return jsonDecode(response.body);
       } else {
         debugPrint("❌ Failed to log object count: ${response.body}");
         return null;
       }
-    } catch (error) {
+    } catch (error, stacktrace) {
       debugPrint("⚠️ Error logging object count: $error");
+      debugPrint(stacktrace.toString());
       return null;
     }
   }
