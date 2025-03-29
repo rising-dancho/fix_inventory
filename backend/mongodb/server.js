@@ -135,13 +135,19 @@ app.post('/api/login', async (req, res) => {
 
 // NUMBER OF STOCKS and DETECTIONS DATA -------------
 
+// Get all stock
+app.get('/api/stocks', async (req, res) => {
+  const stocks = await Stock.find();
+  res.json(stocks);
+});
+
 // Save stock categories
 app.post('/api/stocks', async (req, res) => {
   try {
-    for (const item in req.body) {
+    for (const stockName in req.body) {
       await Stock.findOneAndUpdate(
-        { item },
-        { expectedCount: req.body[item] },
+        { stockName },
+        { total_stock: req.body[stockName] },
         { upsert: true }
       );
     }
@@ -151,59 +157,48 @@ app.post('/api/stocks', async (req, res) => {
   }
 });
 
-app.delete('/api/stocks/:item', async (req, res) => {
+app.delete('/api/stocks/:stockName', async (req, res) => {
   try {
-    const itemName = req.params.item;
-    await Stock.deleteOne({ item: itemName });
+    const itemName = req.params.stockName;
+    await Stock.deleteOne({ item_name: itemName });
     res.json({ message: `Deleted ${itemName} successfully` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get all stock
-app.get('/api/stocks', async (req, res) => {
-  const stocks = await Stock.find();
-  res.json(stocks);
-});
-
-const PORT = 2000;
-app.listen(PORT, () => {
-  console.log(`Connected to server at ${PORT}`);
-});
-
 app.post('/api/count_objects', async (req, res) => {
   try {
     // Extract values from request body
-    const { userId, item, countedAmount } = req.body;
+    const { userId, stockName, sold } = req.body;
 
     // Ensure required values are present
-    if (!userId || !item || countedAmount === undefined) {
+    if (!userId || !stockName || sold === undefined) {
       return res
         .status(400)
-        .json({ message: 'User ID, stock item, and count are required' });
+        .json({ message: 'User ID, stockName, and sold are required' });
     }
 
-    // Find the stock item in the database
-    const stock = await Stock.findOne({ item: item });
+    // Find the stockName in the database
+    const stock = await Stock.findOne({ stockName: stockName });
     if (!stock) {
       return res
         .status(404)
-        .json({ message: `Stock item '${item}' not found` });
+        .json({ message: `Stock item '${stockName}' not found` });
     }
 
-    // ✅ Update the stock's detectedCount in MongoDB
+    // ✅ Update the stock's sold in MongoDB
     await Stock.updateOne(
-      { item: item },
-      { $set: { detectedCount: countedAmount } }
+      { stockName: stockName },
+      { $set: { sold: sold } }
     );
 
     // ✅ Log the activity and associate it with the stock
     await Activity.create({
       userId,
-      action: `Updated count for ${item}`,
-      stockId: stock._id, // ✅ Associate stock item
-      countedAmount,
+      action: `Updated count for ${stockName}`,
+      stockId: stock._id, // ✅ Associate stockName
+      sold,
     });
 
     res.status(200).json({
@@ -223,7 +218,7 @@ app.get('/api/activity/:activityId', async (req, res) => {
     const { activityId } = req.params;
     const activity = await Activity.findById(activityId).populate(
       'stockId',
-      'item'
+      'stockName'
     );
 
     if (!activity) {
@@ -234,7 +229,7 @@ app.get('/api/activity/:activityId', async (req, res) => {
       _id: activity._id,
       userId: activity.userId,
       action: activity.action,
-      item: activity.stockId?.item ?? 'N/A',
+      stockName: activity.stockId?.stockName ?? 'N/A',
       countedAmount: activity.countedAmount,
       timestamp: activity.createdAt,
     });
@@ -254,7 +249,7 @@ app.get('/api/activity_logs/:userId', async (req, res) => {
     // Fetch all activities with user and stock info
     const activities = await Activity.find({ userId })
       .populate('userId', 'fullName') // Get user's full name
-      .populate('stockId', 'item expectedCount detectedCount') // Get stock details
+      .populate('stockId', 'stockName totalStock sold') // Get stock details
       .sort({ createdAt: -1 });
 
     // Format response
@@ -263,10 +258,10 @@ app.get('/api/activity_logs/:userId', async (req, res) => {
       userId: activity.userId?._id, // ✅ Explicitly include userId
       fullName: activity.userId?.fullName ?? 'Unknown User', // ✅ Include fullName
       action: activity.action,
-      item: activity.stockId?.item ?? 'N/A', // Get stock item name
+      stockName: activity.stockId?.stockName ?? 'N/A', // Get stock item name
       countedAmount: activity.countedAmount,
-      expectedStock: activity.stockId?.expectedCount ?? 0,
-      detectedStock: activity.stockId?.detectedCount ?? 0,
+      totalStock: activity.stockId?.totalStock ?? 0,
+      availableStock: activity.stockId?.availableStock ?? 0,
       timestamp: activity.createdAt, // ✅ Keep the timestamp
     }));
     res.status(200).json(formattedActivities);
@@ -292,7 +287,7 @@ app.get('/api/activity_logs/', async (req, res) => {
       userId: activity.userId?._id, // ✅ Explicitly include userId
       fullName: activity.userId?.fullName ?? 'Unknown User', // ✅ Include fullName
       action: activity.action,
-      countedAmount: activity.countedAmount, 
+      countedAmount: activity.countedAmount,
       timestamp: activity.createdAt, // ✅ Keep the timestamp
     }));
 
@@ -304,6 +299,10 @@ app.get('/api/activity_logs/', async (req, res) => {
       .status(500)
       .json({ message: 'Internal server error', error: error.message });
   }
+  // EXPLANATION ON ABOUT ACTIVITY LOGS PER USERID AND ALL ACTIVITY LOGS PER USER: https://chatgpt.com/share/67e6097f-8c94-8000-940d-5ecd8c54bb09
 });
 
-// EXPLANATION ON ABOUT ACTIVITY LOGS PER USERID AND ALL ACTIVITY LOGS PER USER: https://chatgpt.com/share/67e6097f-8c94-8000-940d-5ecd8c54bb09
+const PORT = 2000;
+app.listen(PORT, () => {
+  console.log(`Connected to server at ${PORT}`);
+});

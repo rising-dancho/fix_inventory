@@ -5,8 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class API {
   // static const baseUrl = "http://192.168.1.10:2000/api/"; // FOR TESTING
-  static const baseUrl =
-      "https://fix-inventory.vercel.app/api/";
+  static const baseUrl = "https://fix-inventory.vercel.app/api/";
 
   // POST REQUEST: REGISTRATION
   static Future<Map<String, dynamic>?> registerUser(
@@ -125,6 +124,67 @@ class API {
     }
   }
 
+  // Fetch activity details by activityId
+  static Future<Map<String, dynamic>?> fetchActivityById(
+      String activityId) async {
+    debugPrint(
+        "📡 Fetching activity details from: ${baseUrl}activity/$activityId");
+
+    var url = Uri.parse("${baseUrl}activity/$activityId");
+
+    try {
+      final res = await http.get(url);
+
+      debugPrint("Response Code: ${res.statusCode}");
+      debugPrint("Response Body: ${res.body}");
+
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      } else {
+        debugPrint("❌ Failed to fetch activity details: ${res.body}");
+        return null;
+      }
+    } catch (error) {
+      debugPrint("⚠️ Error fetching activity details: $error");
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> logStockCurrentCount(
+      String userId, String stockItem, int countedAmount) async {
+    var url = Uri.parse("${baseUrl}count_objects");
+
+    Map<String, dynamic> requestBody = {
+      "userId": userId,
+      "item": stockItem,
+      "countedAmount": countedAmount,
+    };
+
+    debugPrint("🔄 Sending request to: $url");
+    debugPrint("📦 Request body: ${jsonEncode(requestBody)}");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(requestBody),
+      );
+
+      debugPrint("📝 Response Code: ${response.statusCode}");
+      debugPrint("📝 Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body); // Return the response data
+      } else {
+        debugPrint("❌ Failed to log object count: ${response.body}");
+        return null;
+      }
+    } catch (error) {
+      debugPrint("⚠️ Error logging object count: $error");
+      return null;
+    }
+  }
+
   static Future<void> saveStockToMongoDB(
       Map<String, Map<String, int>> stockCounts) async {
     try {
@@ -197,67 +257,6 @@ class API {
       }
     } catch (e) {
       debugPrint("Error deleting stock: $e");
-    }
-  }
-
-  static Future<Map<String, dynamic>?> logStockCurrentCount(
-      String userId, String stockItem, int countedAmount) async {
-    var url = Uri.parse("${baseUrl}count_objects");
-
-    Map<String, dynamic> requestBody = {
-      "userId": userId,
-      "item": stockItem,
-      "countedAmount": countedAmount,
-    };
-
-    debugPrint("🔄 Sending request to: $url");
-    debugPrint("📦 Request body: ${jsonEncode(requestBody)}");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody),
-      );
-
-      debugPrint("📝 Response Code: ${response.statusCode}");
-      debugPrint("📝 Response Body: ${response.body}");
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Return the response data
-      } else {
-        debugPrint("❌ Failed to log object count: ${response.body}");
-        return null;
-      }
-    } catch (error) {
-      debugPrint("⚠️ Error logging object count: $error");
-      return null;
-    }
-  }
-
-  // Fetch activity details by activityId
-  static Future<Map<String, dynamic>?> fetchActivityById(
-      String activityId) async {
-    debugPrint(
-        "📡 Fetching activity details from: ${baseUrl}activity/$activityId");
-
-    var url = Uri.parse("${baseUrl}activity/$activityId");
-
-    try {
-      final res = await http.get(url);
-
-      debugPrint("Response Code: ${res.statusCode}");
-      debugPrint("Response Body: ${res.body}");
-
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        debugPrint("❌ Failed to fetch activity details: ${res.body}");
-        return null;
-      }
-    } catch (error) {
-      debugPrint("⚠️ Error fetching activity details: $error");
-      return null;
     }
   }
 }
