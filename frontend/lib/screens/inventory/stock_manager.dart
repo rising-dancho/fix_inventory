@@ -32,9 +32,14 @@ class _StockManagerState extends State<StockManager> {
   Future<void> fetchStockData() async {
     Map<String, Map<String, int>>? data = await API.fetchStockFromMongoDB();
     debugPrint("Fetched Stock Data: $data");
+
     if (data != null && mounted) {
       setState(() {
-        stockCounts = data;
+        stockCounts = data.map((key, value) => MapEntry(key, {
+              "availableStock":
+                  value["availableStock"] ?? 0, // Matches DB field
+              "totalStock": value["totalStock"] ?? 0, // Matches DB field
+            }));
       });
       debugPrint("Updated StockCounts: $stockCounts");
     }
@@ -47,8 +52,9 @@ class _StockManagerState extends State<StockManager> {
     if (itemName.isNotEmpty && itemCount != null) {
       setState(() {
         stockCounts[itemName] = {
-          "detectedCount": 0, // Default value
-          "expectedCount": itemCount, // Set expected count
+          "availableStock": itemCount, // ✅ Set initial available stock
+          "totalStock": itemCount, // ✅ Matches backend schema
+          "sold": 0, // ✅ Default value
         };
       });
 
@@ -62,7 +68,7 @@ class _StockManagerState extends State<StockManager> {
   void updateStock(String item, int newCount) {
     if (stockCounts.containsKey(item)) {
       setState(() {
-        stockCounts[item]?["expectedCount"] = newCount;
+        stockCounts[item]?["totalStock"] = newCount;
       });
 
       API.saveStockToMongoDB(stockCounts);
@@ -162,10 +168,9 @@ class _StockManagerState extends State<StockManager> {
                       itemCount: stockCounts.length,
                       itemBuilder: (context, index) {
                         String item = stockCounts.keys.elementAt(index);
-                        int detectedCount =
-                            stockCounts[item]?["detectedCount"] ?? 0;
-                        int expectedCount =
-                            stockCounts[item]?["expectedCount"] ?? 0;
+                        int availableStock =
+                            stockCounts[item]?["availableStock"] ?? 0;
+                        int totalStock = stockCounts[item]?["totalStock"] ?? 0;
 
                         return Padding(
                           padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
@@ -202,7 +207,7 @@ class _StockManagerState extends State<StockManager> {
                                         ],
                                       ),
                                       Text(
-                                        "Current: $detectedCount",
+                                        "Current: $availableStock",
                                         textAlign: TextAlign.start,
                                       ),
                                     ],
@@ -210,7 +215,7 @@ class _StockManagerState extends State<StockManager> {
                                 ),
                                 Padding(
                                   padding: EdgeInsets.only(right: 15),
-                                  child: Text("Total: $expectedCount"),
+                                  child: Text("Total: $totalStock"),
                                 ),
                                 Row(children: [
                                   IconButton(
@@ -221,7 +226,7 @@ class _StockManagerState extends State<StockManager> {
                                         builder: (context) {
                                           TextEditingController editController =
                                               TextEditingController(
-                                                  text: expectedCount.toString());
+                                                  text: totalStock.toString());
                                           return AlertDialog(
                                             title: Text("Edit $item Stock"),
                                             content: TextField(

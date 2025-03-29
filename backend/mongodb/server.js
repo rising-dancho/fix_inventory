@@ -162,13 +162,47 @@ app.post('/api/stocks', async (req, res) => {
 
 app.delete('/api/stocks/:stockName', async (req, res) => {
   try {
-    const itemName = req.params.stockName;
-    await Stock.deleteOne({ item_name: itemName });
-    res.json({ message: `Deleted ${itemName} successfully` });
+    const stockName = req.params.stockName;
+    await Stock.deleteOne({ stockName: stockName }); // ✅ Fix field name
+    res.json({ message: `Deleted ${stockName} successfully` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.post('/api/count_objects', async (req, res) => {
   try {

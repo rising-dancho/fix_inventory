@@ -192,8 +192,9 @@ class API {
           stockCounts.entries.map((entry) {
         return {
           "stockName": entry.key,
-          "totalStock": entry.value["expectedCount"] ?? 0,
-          "sold": entry.value["sold"] ?? 0, // Ensure `sold` is included
+          "totalStock": entry.value["totalStock"] ?? 0, // ✅ Fixed key
+          "sold": entry.value["sold"] ?? 0,
+          "availableStock": entry.value["availableStock"] ?? 0, // ✅ Added
         };
       }).toList();
 
@@ -224,16 +225,17 @@ class API {
 
         Map<String, Map<String, int>> stockData = {};
         for (var item in jsonData) {
-          if (item.containsKey("item") &&
-              item.containsKey("detectedCount") &&
-              item.containsKey("expectedCount")) {
-            String itemName = item["item"];
-            int detectedCount = item["detectedCount"] ?? 0;
-            int expectedCount = item["expectedCount"] ?? 0;
+          if (item.containsKey("stockName") &&
+              item.containsKey("availableStock") &&
+              item.containsKey("totalStock")) {
+            // Use correct field names
+            String itemName = item["stockName"];
+            int availableStock = item["availableStock"] ?? 0;
+            int totalStock = item["totalStock"] ?? 0;
 
             stockData[itemName] = {
-              "detectedCount": detectedCount,
-              "expectedCount": expectedCount,
+              "availableStock": availableStock, // Matches MongoDB schema
+              "totalStock": totalStock, // Matches MongoDB schema
             };
           }
         }
@@ -252,7 +254,10 @@ class API {
 
   static Future<void> deleteStockFromMongoDB(String itemName) async {
     try {
-      var response = await http.delete(Uri.parse("${baseUrl}stocks/$itemName"));
+      var encodedName =
+          Uri.encodeComponent(itemName); // ✅ Prevent issues with spaces
+      var response =
+          await http.delete(Uri.parse("${baseUrl}stocks/$encodedName"));
 
       if (response.statusCode == 200) {
         debugPrint("Stock deleted: ${response.body}");
