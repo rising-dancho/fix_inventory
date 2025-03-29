@@ -158,11 +158,9 @@ app.post('/api/count_objects', async (req, res) => {
 
     // 🛑 Ensure availableStock never goes negative
     if (stock.availableStock < sold) {
-      return res
-        .status(400)
-        .json({
-          message: `Not enough stock available. Only ${stock.availableStock} left.`,
-        });
+      return res.status(400).json({
+        message: `Not enough stock available. Only ${stock.availableStock} left.`,
+      });
     }
 
     // ✅ Update stock: subtract `sold` from `availableStock`
@@ -213,7 +211,7 @@ app.get('/api/activity/:activityId', async (req, res) => {
       userId: activity.userId,
       action: activity.action,
       stockName: activity.stockId?.stockName ?? 'N/A',
-      countedAmount: activity.countedAmount,
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
       timestamp: activity.createdAt,
     });
   } catch (error) {
@@ -229,24 +227,23 @@ app.get('/api/activity_logs/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Fetch all activities with user and stock info
     const activities = await Activity.find({ userId })
-      .populate('userId', 'fullName') // Get user's full name
-      .populate('stockId', 'stockName totalStock sold') // Get stock details
+      .populate('userId', 'fullName')
+      .populate('stockId', 'stockName totalStock availableStock sold')
       .sort({ createdAt: -1 });
 
-    // Format response
     const formattedActivities = activities.map((activity) => ({
       _id: activity._id,
-      userId: activity.userId?._id, // ✅ Explicitly include userId
-      fullName: activity.userId?.fullName ?? 'Unknown User', // ✅ Include fullName
+      userId: activity.userId?._id,
+      fullName: activity.userId?.fullName ?? 'Unknown User',
       action: activity.action,
-      stockName: activity.stockId?.stockName ?? 'N/A', // Get stock item name
-      countedAmount: activity.countedAmount,
+      stockName: activity.stockId?.stockName ?? 'N/A',
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
       totalStock: activity.stockId?.totalStock ?? 0,
-      availableStock: activity.stockId?.availableStock ?? 0,
-      timestamp: activity.createdAt, // ✅ Keep the timestamp
+      availableStock: activity.stockId?.availableStock ?? 0, // ✅ Now included
+      timestamp: activity.createdAt,
     }));
+
     res.status(200).json(formattedActivities);
   } catch (error) {
     console.error('❌ Error fetching activity logs per user:', error);
@@ -259,25 +256,26 @@ app.get('/api/activity_logs/:userId', async (req, res) => {
 // GET ALL USER ACTIVITY LOGS
 app.get('/api/activity_logs/', async (req, res) => {
   try {
-    // Fetch all activities and populate userId to get both userId and fullName
-    const activities = await Activity.find() // JUST REMOVE THE FILTER TO GET ALL ACTIVITIES
-      .populate('userId', 'fullName') // Fetch fullName from User model
-      .sort({ createdAt: -1 }); // Sort latest first
+    const { page = 1, limit = 50 } = req.query; // Default: 50 results per page
 
-    // Format response to explicitly include userId
+    const activities = await Activity.find()
+      .populate('userId', 'fullName')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit) // Pagination
+      .limit(Number(limit)); // Convert to number for safety
+
     const formattedActivities = activities.map((activity) => ({
       _id: activity._id,
-      userId: activity.userId?._id, // ✅ Explicitly include userId
-      fullName: activity.userId?.fullName ?? 'Unknown User', // ✅ Include fullName
+      userId: activity.userId?._id,
+      fullName: activity.userId?.fullName ?? 'Unknown User',
       action: activity.action,
-      countedAmount: activity.countedAmount,
-      timestamp: activity.createdAt, // ✅ Keep the timestamp
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
+      timestamp: activity.createdAt,
     }));
 
     res.status(200).json(formattedActivities);
   } catch (error) {
     console.error('❌ Error fetching all activity logs:', error);
-
     res
       .status(500)
       .json({ message: 'Internal server error', error: error.message });

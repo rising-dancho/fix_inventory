@@ -8,11 +8,14 @@ const activitySchema = new mongoose.Schema(
       required: true,
     },
     action: { type: String, required: true },
-    stockId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Stock', 
-      required: true, // ✅ Ensure every activity is linked to a stock item
-    }, 
+    stockId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Stock',
+      required: function () {
+        return this.action !== 'Logged In';
+      }, // ❗ Only require stockId for stock-related actions
+    },
+    countedAmount: { type: Number, default: 0 }, // Add this to match Flutter
   },
   { timestamps: true }
 );
