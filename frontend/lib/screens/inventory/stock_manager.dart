@@ -29,16 +29,18 @@ class _StockManagerState extends State<StockManager> {
     fetchStockData();
   }
 
+  // INFO DISPLAYED IN THE CARDS PULLED FROM THE STOCKS COLLECTION
   Future<void> fetchStockData() async {
     Map<String, Map<String, int>>? data = await API.fetchStockFromMongoDB();
     debugPrint("Fetched Stock Data: $data");
+    debugPrint("STOCK COUNTS Data: $stockCounts");
 
     if (data != null && mounted) {
       setState(() {
         stockCounts = data.map((key, value) => MapEntry(key, {
-              "availableStock":
-                  value["availableStock"] ?? 0, // Matches DB field
-              "totalStock": value["totalStock"] ?? 0, // Matches DB field
+              "availableStock": value["availableStock"] ?? 0,
+              "totalStock": value["totalStock"] ?? 0,
+              "sold": value["sold"] ?? 0,
             }));
       });
       debugPrint("Updated StockCounts: $stockCounts");
@@ -52,9 +54,9 @@ class _StockManagerState extends State<StockManager> {
     if (itemName.isNotEmpty && itemCount != null) {
       setState(() {
         stockCounts[itemName] = {
-          "availableStock": itemCount, // ✅ Set initial available stock
-          "totalStock": itemCount, // ✅ Matches backend schema
-          "sold": 0, // ✅ Default value
+          "availableStock": itemCount,
+          "totalStock": itemCount,
+          "sold": 0, // ✅ Make sure sold is stored properly
         };
       });
 
@@ -171,6 +173,7 @@ class _StockManagerState extends State<StockManager> {
                         int availableStock =
                             stockCounts[item]?["availableStock"] ?? 0;
                         int totalStock = stockCounts[item]?["totalStock"] ?? 0;
+                        int sold = stockCounts[item]?["sold"] ?? 0;
 
                         return Padding(
                           padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
@@ -207,7 +210,11 @@ class _StockManagerState extends State<StockManager> {
                                         ],
                                       ),
                                       Text(
-                                        "Current: $availableStock",
+                                        "Available: $availableStock",
+                                        textAlign: TextAlign.start,
+                                      ),
+                                      Text(
+                                        "Sold: $sold",
                                         textAlign: TextAlign.start,
                                       ),
                                     ],

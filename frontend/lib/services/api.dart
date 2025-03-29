@@ -229,19 +229,24 @@ class API {
           if (item.containsKey("stockName") &&
               item.containsKey("availableStock") &&
               item.containsKey("totalStock")) {
-            // Use correct field names
+            // ✅ No longer requiring "sold"
+
             String itemName = item["stockName"];
             int availableStock = item["availableStock"] ?? 0;
             int totalStock = item["totalStock"] ?? 0;
+            int sold = item.containsKey("sold")
+                ? item["sold"] ?? 0
+                : 0; // ✅ Handle missing "sold"
 
             stockData[itemName] = {
-              "availableStock": availableStock, // Matches MongoDB schema
-              "totalStock": totalStock, // Matches MongoDB schema
+              "availableStock": availableStock,
+              "totalStock": totalStock,
+              "sold": sold, // ✅ Ensures "sold" exists
             };
           }
         }
 
-        debugPrint("Fetched Stock Data: $stockData");
+        debugPrint("Fetched Stock Data with Sold: $stockData");
         return stockData;
       } else {
         debugPrint("Failed to fetch stock: ${response.body}");
