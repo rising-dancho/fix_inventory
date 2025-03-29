@@ -144,11 +144,14 @@ app.get('/api/stocks', async (req, res) => {
 // Save stock categories
 app.post('/api/stocks', async (req, res) => {
   try {
-    for (const stockName in req.body) {
+    for (const stockItem of req.body) {
       await Stock.findOneAndUpdate(
-        { stockName },
-        { total_stock: req.body[stockName] },
-        { upsert: true }
+        { stockName: stockItem.stockName }, // Ensure correct search query
+        {
+          totalStock: stockItem.totalStock,
+          availableStock: stockItem.totalStock - (stockItem.sold ?? 0), // Ensure availableStock updates
+        },
+        { upsert: true, new: true }
       );
     }
     res.json({ message: 'Stock updated successfully' });
@@ -188,10 +191,7 @@ app.post('/api/count_objects', async (req, res) => {
     }
 
     // ✅ Update the stock's sold in MongoDB
-    await Stock.updateOne(
-      { stockName: stockName },
-      { $set: { sold: sold } }
-    );
+    await Stock.updateOne({ stockName: stockName }, { $set: { sold: sold } });
 
     // ✅ Log the activity and associate it with the stock
     await Activity.create({

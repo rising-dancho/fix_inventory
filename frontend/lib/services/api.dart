@@ -188,14 +188,19 @@ class API {
   static Future<void> saveStockToMongoDB(
       Map<String, Map<String, int>> stockCounts) async {
     try {
-      // Convert nested Map<String, Map<String, int>> into a flat Map<String, int>
-      Map<String, int> formattedStocks = stockCounts
-          .map((key, value) => MapEntry(key, value["expectedCount"] ?? 0));
+      List<Map<String, dynamic>> formattedStocks =
+          stockCounts.entries.map((entry) {
+        return {
+          "stockName": entry.key,
+          "totalStock": entry.value["expectedCount"] ?? 0,
+          "sold": entry.value["sold"] ?? 0, // Ensure `sold` is included
+        };
+      }).toList();
 
       var response = await http.post(
         Uri.parse("${baseUrl}stocks"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(formattedStocks), // Flattened stock data
+        body: jsonEncode(formattedStocks),
       );
 
       if (response.statusCode == 200) {
