@@ -149,6 +149,43 @@ class API {
     }
   }
 
+  // Fetch activity details by activityId
+  static Future<Map<String, dynamic>?> fetchActivityById(
+      String activityId) async {
+    debugPrint(
+        "📡 Fetching activity details from: ${baseUrl}activity/$activityId");
+
+    var url = Uri.parse("${baseUrl}activity/$activityId");
+
+    try {
+      final res = await http.get(url);
+
+      debugPrint("Response Code: ${res.statusCode}");
+      debugPrint("Response Body: ${res.body}");
+
+      if (res.statusCode == 200) {
+        try {
+          return jsonDecode(res.body); // ✅ Handle valid JSON
+        } catch (e) {
+          debugPrint("⚠️ JSON Parsing Error: $e");
+          return {"error": "Invalid JSON format"};
+        }
+      } else if (res.statusCode == 404) {
+        return {"error": "Activity not found"}; // ✅ Handle 404 properly
+      } else {
+        return {
+          "error":
+              "Failed to fetch activity. Server responded with ${res.statusCode}"
+        };
+      }
+    } catch (error) {
+      debugPrint("⚠️ Error fetching activity details: $error");
+      return {
+        "error": "Network error: $error"
+      }; // ✅ Return error instead of `null`
+    }
+  }
+
   static Future<Map<String, dynamic>?> logStockCurrentCount(
       String userId, String stockItem, int sold) async {
     var url = Uri.parse("${baseUrl}count_objects");
