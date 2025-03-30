@@ -101,7 +101,18 @@ class API {
 
       if (res.statusCode == 200) {
         List<dynamic> data = jsonDecode(res.body);
-        return List<Map<String, dynamic>>.from(data);
+
+        // ✅ Ensure `countedAmount` is mapped correctly
+        List<Map<String, dynamic>> parsedData = data.map((log) {
+          return {
+            "userName": log["fullName"] ?? "Unknown User",
+            "action": log["action"] ?? "Unknown Action",
+            "countedAmount": log["stockId"]?["sold"] ?? 0, // ✅ Handle new field
+            "timestamp": log["createdAt"] ?? "Unknown Time",
+          };
+        }).toList();
+
+        return parsedData;
       } else {
         debugPrint("❌ Failed to fetch logs: ${res.body}");
         return null;
@@ -113,39 +124,27 @@ class API {
   }
 
   // Fetch ALL activity logs
-  static Future<List<dynamic>?> fetchAllActivityLogs() async {
-    final response = await http.get(Uri.parse('$baseUrl/activity_logs'));
+  static Future<List<Map<String, dynamic>>?> fetchAllActivityLogs() async {
+    debugPrint("📡 Fetching all activity logs from: ${baseUrl}activity_logs");
+
+    final response = await http.get(Uri.parse('${baseUrl}activity_logs'));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      List<dynamic> data = jsonDecode(response.body);
+
+      // ✅ Ensure `countedAmount` comes from `stockId.sold`
+      List<Map<String, dynamic>> parsedData = data.map((log) {
+        return {
+          "userName": log["fullName"] ?? "Unknown User",
+          "action": log["action"] ?? "Unknown Action",
+          "countedAmount": log["stockId"]?["sold"] ?? 0, // ✅ Handle new field
+          "timestamp": log["createdAt"] ?? "Unknown Time",
+        };
+      }).toList();
+
+      return parsedData;
     } else {
       debugPrint("❌ Failed to fetch activity logs: ${response.body}");
-      return null;
-    }
-  }
-
-  // Fetch activity details by activityId
-  static Future<Map<String, dynamic>?> fetchActivityById(
-      String activityId) async {
-    debugPrint(
-        "📡 Fetching activity details from: ${baseUrl}activity/$activityId");
-
-    var url = Uri.parse("${baseUrl}activity/$activityId");
-
-    try {
-      final res = await http.get(url);
-
-      debugPrint("Response Code: ${res.statusCode}");
-      debugPrint("Response Body: ${res.body}");
-
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        debugPrint("❌ Failed to fetch activity details: ${res.body}");
-        return null;
-      }
-    } catch (error) {
-      debugPrint("⚠️ Error fetching activity details: $error");
       return null;
     }
   }
@@ -157,7 +156,7 @@ class API {
     Map<String, dynamic> requestBody = {
       "userId": userId,
       "stockName": stockItem,
-      "sold": sold,
+      "sold": sold, // ✅ Ensure this matches the backend field name
     };
 
     debugPrint("🔄 Sending request to: $url");

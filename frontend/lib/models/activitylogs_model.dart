@@ -13,10 +13,10 @@ class ActivityLog {
 
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
     return ActivityLog(
-      userName: json['fullName'] ?? 'Unknown User', 
+      userName: json['fullName'] ?? 'Unknown User',
       action: json['action'] ?? 'Unknown Action',
-      countedAmount: json['countedAmount'] ?? 0, 
-      timestamp: json['createdAt'] ?? 'Unknown Time', 
+      countedAmount: json['stockId']?['sold'] ?? 0, // ✅ Get sold from stockId
+      timestamp: json['createdAt'] ?? 'Unknown Time',
     );
   }
 }
