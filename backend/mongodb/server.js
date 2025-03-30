@@ -179,7 +179,7 @@ app.post('/api/count_objects', async (req, res) => {
       userId,
       action: `Updated count for ${stockName}`,
       stockId: stock._id,
-      sold,
+      countedAmount: sold,
     });
 
     res.status(200).json({

@@ -13,9 +13,9 @@ const activitySchema = new mongoose.Schema(
       ref: 'Stock',
       required: function () {
         return this.action !== 'Logged In';
-      }, // ❗ Only require stockId for stock-related actions
+      }, // Only require stockId for stock-related actions
     },
-    countedAmount: { type: Number, default: 0 }, // Add this to match Flutter
+    countedAmount: { type: Number, default: 0 }, 
   },
   { timestamps: true }
 );
