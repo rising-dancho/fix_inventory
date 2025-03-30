@@ -101,18 +101,7 @@ class API {
 
       if (res.statusCode == 200) {
         List<dynamic> data = jsonDecode(res.body);
-
-        // ✅ Ensure `countedAmount` is mapped correctly
-        List<Map<String, dynamic>> parsedData = data.map((log) {
-          return {
-            "userName": log["fullName"] ?? "Unknown User",
-            "action": log["action"] ?? "Unknown Action",
-            "countedAmount": log["stockId"]?["sold"] ?? 0, // ✅ Handle new field
-            "timestamp": log["createdAt"] ?? "Unknown Time",
-          };
-        }).toList();
-
-        return parsedData;
+        return List<Map<String, dynamic>>.from(data);
       } else {
         debugPrint("❌ Failed to fetch logs: ${res.body}");
         return null;
@@ -124,25 +113,11 @@ class API {
   }
 
   // Fetch ALL activity logs
-  static Future<List<Map<String, dynamic>>?> fetchAllActivityLogs() async {
-    debugPrint("📡 Fetching all activity logs from: ${baseUrl}activity_logs");
-
-    final response = await http.get(Uri.parse('${baseUrl}activity_logs'));
+  static Future<List<dynamic>?> fetchAllActivityLogs() async {
+    final response = await http.get(Uri.parse('$baseUrl/activity_logs'));
 
     if (response.statusCode == 200) {
-      List<dynamic> data = jsonDecode(response.body);
-
-      // ✅ Ensure `countedAmount` comes from `stockId.sold`
-      List<Map<String, dynamic>> parsedData = data.map((log) {
-        return {
-          "userName": log["fullName"] ?? "Unknown User",
-          "action": log["action"] ?? "Unknown Action",
-          "countedAmount": log["stockId"]?["sold"] ?? 0, // ✅ Handle new field
-          "timestamp": log["createdAt"] ?? "Unknown Time",
-        };
-      }).toList();
-
-      return parsedData;
+      return jsonDecode(response.body);
     } else {
       debugPrint("❌ Failed to fetch activity logs: ${response.body}");
       return null;
@@ -164,25 +139,14 @@ class API {
       debugPrint("Response Body: ${res.body}");
 
       if (res.statusCode == 200) {
-        try {
-          return jsonDecode(res.body); // ✅ Handle valid JSON
-        } catch (e) {
-          debugPrint("⚠️ JSON Parsing Error: $e");
-          return {"error": "Invalid JSON format"};
-        }
-      } else if (res.statusCode == 404) {
-        return {"error": "Activity not found"}; // ✅ Handle 404 properly
+        return jsonDecode(res.body);
       } else {
-        return {
-          "error":
-              "Failed to fetch activity. Server responded with ${res.statusCode}"
-        };
+        debugPrint("❌ Failed to fetch activity details: ${res.body}");
+        return null;
       }
     } catch (error) {
       debugPrint("⚠️ Error fetching activity details: $error");
-      return {
-        "error": "Network error: $error"
-      }; // ✅ Return error instead of `null`
+      return null;
     }
   }
 
@@ -193,7 +157,7 @@ class API {
     Map<String, dynamic> requestBody = {
       "userId": userId,
       "stockName": stockItem,
-      "sold": sold, // ✅ Ensure this matches the backend field name
+      "sold": sold,
     };
 
     debugPrint("🔄 Sending request to: $url");

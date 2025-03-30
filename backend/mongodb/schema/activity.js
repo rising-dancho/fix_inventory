@@ -15,14 +15,9 @@ const activitySchema = new mongoose.Schema(
         return this.action !== 'Logged In';
       }, // Only require stockId for stock-related actions
     },
+    countedAmount: { type: Number, default: 0 }, 
   },
   { timestamps: true }
 );
-
-// Automatically populate stockId when fetching activities
-activitySchema.pre(/^find/, function (next) {
-  this.populate('stockId', 'sold'); // Populate only the 'sold' field of Stock
-  next();
-});
 
 module.exports = mongoose.model('Activity', activitySchema);

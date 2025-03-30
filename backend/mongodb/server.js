@@ -178,8 +178,8 @@ app.post('/api/count_objects', async (req, res) => {
     await Activity.create({
       userId,
       action: `Updated count for ${stockName}`,
-      stockId: stock._id, // ✅ Now referencing stockId instead of countedAmount
-      // countedAmount: sold, // ❌ No longer needed
+      stockId: stock._id,
+      countedAmount: sold,
     });
 
     res.status(200).json({
@@ -211,7 +211,7 @@ app.get('/api/activity/:activityId', async (req, res) => {
       userId: activity.userId,
       action: activity.action,
       stockName: activity.stockId?.stockName ?? 'N/A',
-      countedAmount: activity.stockId?.sold ?? 0, // ✅ Get sold from Stock//
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
       timestamp: activity.createdAt,
     });
   } catch (error) {
@@ -238,7 +238,7 @@ app.get('/api/activity_logs/:userId', async (req, res) => {
       fullName: activity.userId?.fullName ?? 'Unknown User',
       action: activity.action,
       stockName: activity.stockId?.stockName ?? 'N/A',
-      countedAmount: activity.stockId?.sold ?? 0, // ✅ Get sold from Stock
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
       totalStock: activity.stockId?.totalStock ?? 0,
       availableStock: activity.stockId?.availableStock ?? 0, // ✅ Now included
       timestamp: activity.createdAt,
@@ -269,7 +269,7 @@ app.get('/api/activity_logs/', async (req, res) => {
       userId: activity.userId?._id,
       fullName: activity.userId?.fullName ?? 'Unknown User',
       action: activity.action,
-      countedAmount: activity.stockId?.sold ?? 0, // ✅ Get sold from Stock
+      countedAmount: activity.sold ?? 0, // ✅ Ensure correct field
       timestamp: activity.createdAt,
     }));
 
@@ -317,6 +317,7 @@ app.delete('/api/stocks/:stockName', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 const PORT = 2000;
 app.listen(PORT, () => {
