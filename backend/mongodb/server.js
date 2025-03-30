@@ -179,7 +179,7 @@ app.post('/api/count_objects', async (req, res) => {
       userId,
       action: `Updated count for ${stockName}`,
       stockId: stock._id,
-      sold,
+      countedAmount: sold, // ✅ Correct field name
     });
 
     res.status(200).json({
@@ -317,7 +317,6 @@ app.delete('/api/stocks/:stockName', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-6;
 
 const PORT = 2000;
 app.listen(PORT, () => {
