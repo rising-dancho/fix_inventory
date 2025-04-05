@@ -36,6 +36,8 @@ class ActivityLog {
         // DateFormat('MMM d, y • hh:mm a').format(manilaTime);
         DateFormat.yMEd().add_jms().format(manilaTime);
 
+    debugPrint("🧾 RAW COUNT AMOUNT in JSON: ${json['countedAmount']}");
+
     return ActivityLog(
       id: json['_id'] ?? 'Unknown ID', // ✅ Fix: Use _id instead of id
       userId: json['userId'] ?? 'Unknown ID',
@@ -200,7 +202,9 @@ class _ActivityLogsState extends State<ActivityLogs> {
                           DataCell(Text(log.userId)),
                           DataCell(Text(log.fullName)),
                           DataCell(Text(log.action)),
-                          DataCell(Text(log.countedAmount == 0 ? ' ' : log.countedAmount.toString())),
+                          DataCell(Text(log.countedAmount == 0
+                              ? ' '
+                              : log.countedAmount.toString())),
                           DataCell(Text(log.timestamp)),
                         ]);
                       }).toList(),
