@@ -176,13 +176,6 @@ class _PytorchMobileState extends State<PytorchMobile> {
     }
   }
 
-  void updateDatabaseWithObjectCount(String userId, String item) {
-    debugPrint(
-        "📌 Updating Database: User = $userId, Item = $item, Count = ${editableBoundingBoxes.length}");
-    int detectedCount = editableBoundingBoxes.length;
-    logObjectCount(userId, item, detectedCount);
-  }
-
   // STOCK DATA FOR THE DROPDOWN
   Future<void> loadStockData() async {
     var fetchedStocks = await API.fetchStockFromMongoDB();
@@ -249,10 +242,12 @@ class _PytorchMobileState extends State<PytorchMobile> {
           }
 
           if (userId != null) {
+            debugPrint(
+                "📌 Updating Database: USER = $userId, ITEM = $_selectedStock, COUNT = ${editableBoundingBoxes.length}");
             var response = await API.logStockCurrentCount(
               userId,
               _selectedStock!,
-              editableBoundingBoxes.length, // Detected count
+              countedObjects, // Detected count
             );
 
             if (response != null) {
