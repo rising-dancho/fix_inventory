@@ -205,6 +205,17 @@ class _PytorchMobileState extends State<PytorchMobile> {
   /// THIS WOULD ALSO SAVE COUNTED OBJECT TO THE DATABASE (WILL SHOW IN THE ACTIVITY LOGS)
   Future<void> saveImage(BuildContext context) async {
     try {
+      // ✅ PREVENT SAVING IF THE STOCK SELECTION DROPDOWN IS EMPTY
+      if (_selectedStock == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please select a stock before saving"),
+            duration: Duration(milliseconds: 1000),
+          ),
+        );
+        return;
+      }
+
       final Uint8List? screenShot = await screenshotController.capture();
       if (!mounted) return;
 
