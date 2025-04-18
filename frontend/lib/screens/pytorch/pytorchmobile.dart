@@ -18,14 +18,14 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tectags/services/shared_prefs_service.dart';
 
-class TensorflowLite extends StatefulWidget {
-  const TensorflowLite({super.key});
+class PytorchMobile extends StatefulWidget {
+  const PytorchMobile({super.key});
 
   @override
-  State<TensorflowLite> createState() => _TensorflowLiteState();
+  State<PytorchMobile> createState() => _PytorchMobileState();
 }
 
-class _TensorflowLiteState extends State<TensorflowLite> {
+class _PytorchMobileState extends State<PytorchMobile> {
   ScreenshotController screenshotController = ScreenshotController();
   // Image galler and camera variables
   File? _selectedImage;
@@ -50,6 +50,9 @@ class _TensorflowLiteState extends State<TensorflowLite> {
   // FOR THE DROPDOWN
   List<String> stockList = [];
   String? _selectedStock;
+
+  // COUNTED OBJECTS
+  var countedObjects = 0;
 
   @override
   void initState() {
@@ -127,13 +130,13 @@ class _TensorflowLiteState extends State<TensorflowLite> {
       debugPrint(
           "Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
     }
-
     setState(() {
       objects = detectedObjects;
       editableBoundingBoxes = detectedObjects
           .map((obj) => obj.boundingBox)
           .toList(); // ✅ Ensure ML-detected boxes are editable
-      debugPrint("📌 Detected Count: ${editableBoundingBoxes.length}");
+      countedObjects = editableBoundingBoxes.length;
+      debugPrint("📌 DETECTED COUNT: $countedObjects");
     });
 
     // debugPrint bounding boxes AFTER being added to editableBoundingBoxes
@@ -143,7 +146,6 @@ class _TensorflowLiteState extends State<TensorflowLite> {
       debugPrint(
           "Editable Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
     }
-
     drawRectanglesAroundObjects();
   }
 
