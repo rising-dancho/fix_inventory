@@ -51,9 +51,6 @@ class _PytorchMobileState extends State<PytorchMobile> {
   List<String> stockList = [];
   String? _selectedStock;
 
-  // COUNTED OBJECTS
-  var countedObjects = 0;
-
   @override
   void initState() {
     super.initState();
@@ -135,8 +132,7 @@ class _PytorchMobileState extends State<PytorchMobile> {
       editableBoundingBoxes = detectedObjects
           .map((obj) => obj.boundingBox)
           .toList(); // ✅ Ensure ML-detected boxes are editable
-      countedObjects = editableBoundingBoxes.length;
-      debugPrint("📌 DETECTED COUNT: $countedObjects");
+      debugPrint("📌 DETECTED COUNT: ${editableBoundingBoxes.length}");
     });
 
     // debugPrint bounding boxes AFTER being added to editableBoundingBoxes
@@ -243,11 +239,11 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
           if (userId != null) {
             debugPrint(
-                "📌 Updating Database: USER = $userId, ITEM = $_selectedStock, COUNT = ${editableBoundingBoxes.length}");
+                "📌 Updating Database: USER = $userId, ITEM = $_selectedStock, Count = ${editableBoundingBoxes.length}");
             var response = await API.logStockCurrentCount(
               userId,
               _selectedStock!,
-              countedObjects, // Detected count
+              editableBoundingBoxes.length, // Detected count
             );
 
             if (response != null) {
