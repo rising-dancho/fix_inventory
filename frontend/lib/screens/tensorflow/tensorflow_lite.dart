@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:tectags/logic/tensorflow/photo_viewer.dart';
@@ -12,6 +11,11 @@ import 'dart:ui' as ui;
 
 import 'package:tectags/screens/navigation/side_menu.dart';
 import 'package:tectags/services/api.dart';
+
+// SAVING IMAGE TO GALLERY
+import 'package:saver_gallery/saver_gallery.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:tectags/services/shared_prefs_service.dart';
 
 class TensorflowLite extends StatefulWidget {
@@ -61,7 +65,35 @@ class _TensorflowLiteState extends State<TensorflowLite> {
     // initialize object detector inside initState (REQUIRED)
     objectDetector = ObjectDetector(options: options);
     // loadModel();
+    _requestPermission();
   }
+
+  /// Requests necessary permissions based on the platform.
+  Future<void> _requestPermission() async {
+    bool statuses;
+    if (Platform.isAndroid) {
+      final deviceInfoPlugin = DeviceInfoPlugin();
+      final deviceInfo = await deviceInfoPlugin.androidInfo;
+      final sdkInt = deviceInfo.version.sdkInt;
+      statuses =
+          sdkInt < 29 ? await Permission.storage.request().isGranted : true;
+    } else {
+      statuses = await Permission.photosAddOnly.request().isGranted;
+    }
+    debugPrint('Permission Request Result: $statuses');
+  }
+
+  // OBJECT DETECTION
+  // loadModel() async {
+  //   final modelPath = await getModelPath('assets/ml/checkpoint_epoch_1.tflite');
+  //   final options = LocalObjectDetectorOptions(
+  //     mode: DetectionMode.single,
+  //     modelPath: modelPath,
+  //     classifyObjects: true,
+  //     multipleObjects: true,
+  //   );
+  //   objectDetector = ObjectDetector(options: options);
+  // }
 
   // SEND OBJECT COUNT TO THE BACKEND
   void logObjectCount(String userId, String item, int countedAmount) async {
@@ -71,6 +103,74 @@ class _TensorflowLiteState extends State<TensorflowLite> {
       debugPrint("✅ OBJECT COUNT LOGGED successfully: $response");
     } else {
       debugPrint("❌ Failed to log object count.");
+    }
+  }
+
+  doObjectDetection() async {
+    if (_selectedImage == null) {
+      debugPrint("No image selected!");
+      return;
+    }
+
+    debugPrint("Starting object detection...");
+    InputImage inputImage = InputImage.fromFile(_selectedImage!);
+
+    // Get detected objects
+    List<DetectedObject> detectedObjects =
+        await objectDetector.processImage(inputImage);
+    debugPrint("Objects detected: ${detectedObjects.length}");
+
+    // debugPrint all bounding boxes BEFORE adding them to the list
+    debugPrint("\nBounding Boxes BEFORE Processing:");
+    for (int i = 0; i < detectedObjects.length; i++) {
+      final rect = detectedObjects[i].boundingBox;
+      debugPrint(
+          "Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
+    }
+
+    setState(() {
+      objects = detectedObjects;
+      editableBoundingBoxes = detectedObjects
+          .map((obj) => obj.boundingBox)
+          .toList(); // ✅ Ensure ML-detected boxes are editable
+      debugPrint("📌 Detected Count: ${editableBoundingBoxes.length}");
+    });
+
+    // debugPrint bounding boxes AFTER being added to editableBoundingBoxes
+    debugPrint("\nBounding Boxes AFTER Processing:");
+    for (int i = 0; i < editableBoundingBoxes.length; i++) {
+      final rect = editableBoundingBoxes[i];
+      debugPrint(
+          "Editable Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
+    }
+
+    drawRectanglesAroundObjects();
+  }
+
+  imageGallery() async {
+    XFile? pickedFile =
+        await imagePicker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      _selectedImage = File(pickedFile.path);
+      setState(() {
+        _selectedImage;
+        timestamp = DateTime.now().toString(); // Store timestamp
+      });
+      doObjectDetection();
+    }
+  }
+
+  useCamera() async {
+    XFile? pickedFile = await imagePicker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null) {
+      _selectedImage = File(pickedFile.path);
+      setState(() {
+        _selectedImage;
+        timestamp = DateTime.now().toString(); // Store timestamp
+      });
+      doObjectDetection();
     }
   }
 
@@ -99,18 +199,6 @@ class _TensorflowLiteState extends State<TensorflowLite> {
     imageForDrawing = frame.image;
   }
 
-  // OBJECT DETECTION
-  // loadModel() async {
-  //   final modelPath = await getModelPath('assets/ml/checkpoint_epoch_1.tflite');
-  //   final options = LocalObjectDetectorOptions(
-  //     mode: DetectionMode.single,
-  //     modelPath: modelPath,
-  //     classifyObjects: true,
-  //     multipleObjects: true,
-  //   );
-  //   objectDetector = ObjectDetector(options: options);
-  // }
-
   /// **Save Screenshot to Gallery**
   /// THIS WOULD ALSO SAVE COUNTED OBJECT TO THE DATABASE (WILL SHOW IN THE ACTIVITY LOGS)
   Future<void> saveImage(BuildContext context) async {
@@ -125,12 +213,15 @@ class _TensorflowLiteState extends State<TensorflowLite> {
         return;
       }
 
-      final result = await ImageGallerySaverPlus.saveImage(
+      final result = await SaverGallery.saveImage(
         screenShot,
-        name: "screenshot_${DateTime.now().millisecondsSinceEpoch}.png",
+        fileName: "screenshot_${DateTime.now().millisecondsSinceEpoch}.png",
+        skipIfExists: false,
       );
 
-      if (result["isSuccess"]) {
+      debugPrint("Result: $result");
+
+      if (result.isSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Image saved in gallery")),
         );
@@ -187,47 +278,6 @@ class _TensorflowLiteState extends State<TensorflowLite> {
     return file.path;
   }
 
-  doObjectDetection() async {
-    if (_selectedImage == null) {
-      debugPrint("No image selected!");
-      return;
-    }
-
-    debugPrint("Starting object detection...");
-    InputImage inputImage = InputImage.fromFile(_selectedImage!);
-
-    // Get detected objects
-    List<DetectedObject> detectedObjects =
-        await objectDetector.processImage(inputImage);
-    debugPrint("Objects detected: ${detectedObjects.length}");
-
-    // debugPrint all bounding boxes BEFORE adding them to the list
-    debugPrint("\nBounding Boxes BEFORE Processing:");
-    for (int i = 0; i < detectedObjects.length; i++) {
-      final rect = detectedObjects[i].boundingBox;
-      debugPrint(
-          "Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
-    }
-
-    setState(() {
-      objects = detectedObjects;
-      editableBoundingBoxes = detectedObjects
-          .map((obj) => obj.boundingBox)
-          .toList(); // ✅ Ensure ML-detected boxes are editable
-      debugPrint("📌 Detected Count: ${editableBoundingBoxes.length}");
-    });
-
-    // debugPrint bounding boxes AFTER being added to editableBoundingBoxes
-    debugPrint("\nBounding Boxes AFTER Processing:");
-    for (int i = 0; i < editableBoundingBoxes.length; i++) {
-      final rect = editableBoundingBoxes[i];
-      debugPrint(
-          "Editable Box $i: Left=${rect.left}, Top=${rect.top}, Right=${rect.right}, Bottom=${rect.bottom}");
-    }
-
-    drawRectanglesAroundObjects();
-  }
-
   Future<void> drawRectanglesAroundObjects() async {
     if (_selectedImage == null) return;
 
@@ -246,33 +296,6 @@ class _TensorflowLiteState extends State<TensorflowLite> {
   @override
   void dispose() {
     super.dispose();
-  }
-
-  imageGallery() async {
-    XFile? pickedFile =
-        await imagePicker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      _selectedImage = File(pickedFile.path);
-      setState(() {
-        _selectedImage;
-        timestamp = DateTime.now().toString(); // Store timestamp
-      });
-      doObjectDetection();
-    }
-  }
-
-  useCamera() async {
-    XFile? pickedFile = await imagePicker.pickImage(source: ImageSource.camera);
-
-    if (pickedFile != null) {
-      _selectedImage = File(pickedFile.path);
-      setState(() {
-        _selectedImage;
-        timestamp = DateTime.now().toString(); // Store timestamp
-      });
-      doObjectDetection();
-    }
   }
 
   void reset() {
