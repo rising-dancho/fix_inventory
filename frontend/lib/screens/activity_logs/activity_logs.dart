@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tectags/page/pdf_page.dart';
 import 'package:tectags/screens/navigation/side_menu.dart';
 import 'package:tectags/services/api.dart';
 
@@ -136,14 +137,23 @@ class _ActivityLogsState extends State<ActivityLogs> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Activity Logs"),
+        title: const Text(
+          "Activity Logs",
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: Color.fromARGB(255, 27, 211, 224),
+          ),
+        ),
         backgroundColor: const Color.fromARGB(255, 5, 45, 90),
-        foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+        foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
           Builder(
             builder: (context) => IconButton(
-              icon: Icon(Icons.menu),
+              icon: const Icon(Icons.menu),
               onPressed: () {
                 Scaffold.of(context).openEndDrawer();
               },
@@ -152,88 +162,212 @@ class _ActivityLogsState extends State<ActivityLogs> {
         ],
       ),
       endDrawer: const SideMenu(), // Using the extracted drawer
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 24, top: 12, bottom: 0),
-            child: Row(
-              children: [
-                const Text("Show All Users' Logs"),
-                const SizedBox(width: 10),
-                Switch(
-                  value: showAllLogs,
-                  onChanged: (value) {
-                    setState(() {
-                      showAllLogs = value;
-                      _loadActivityLogs(); // Reload data when toggling
-                    });
-                  },
-                  activeColor: Colors.white,
-                  activeTrackColor: Colors.green,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor:
-                      Colors.black54.withAlpha((0.25 * 255).toInt()),
-                ),
-              ],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/tectags_bg.png"),
+            fit: BoxFit.cover,
           ),
-
-          // ✅ Scrollable content stays below
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DataTable(
-                      columns: const [
-                        DataColumn(label: Text('User ID')),
-                        DataColumn(label: Text('Full Name')),
-                        DataColumn(label: Text('Action')),
-                        DataColumn(label: Text('Total Sold')),
-                        DataColumn(label: Text('Timestamp')),
-                      ],
-                      rows: activityLogs.map((log) {
-                        return DataRow(cells: [
-                          DataCell(Text(log.userId)),
-                          DataCell(Text(log.fullName)),
-                          DataCell(Text(log.action)),
-                          DataCell(Text(log.countedAmount == 0
-                              ? ' '
-                              : log.countedAmount.toString())),
-                          DataCell(Text(log.timestamp)),
-                        ]);
-                      }).toList(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 24, top: 12, bottom: 0),
+              child: Row(
+                children: [
+                  Text(
+                    "Show All Users' Logs",
+                    style: TextStyle(
+                      color:
+                          Colors.white, // Change this to any color you prefer
+                      fontSize: 15, // Optional: Adjust the font size
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  Switch(
+                    value: showAllLogs,
+                    onChanged: (value) {
+                      setState(() {
+                        showAllLogs = value;
+                        _loadActivityLogs(); // Reload data when toggling
+                      });
+                    },
+                    activeColor: Colors.white,
+                    activeTrackColor: Colors.green,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color.fromARGB(255, 243, 243, 243)
+                        .withAlpha((0.25 * 255).toInt()),
+                  ),
+                ],
               ),
             ),
-          ),
 
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 16),
-                backgroundColor: const Color.fromARGB(255, 10, 125, 170),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 118, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                      color: const Color.fromARGB(255, 3, 130, 168), width: 2),
+            const SizedBox(width: 50),
+            // ✅ White Table for Logs
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DataTable(
+                        dataRowHeight: 60, // Adjust row height
+                        headingRowHeight: 56, // Adjust header row height
+                        columnSpacing: 20, // Adjust space between columns
+                        decoration: BoxDecoration(
+                          color: Colors
+                              .white, // Set white background color for the table
+                          borderRadius: BorderRadius.circular(
+                              15), // Rounded corners for the table
+                          boxShadow: [
+                            // Optional: Add shadow for a 3D effect
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 2,
+                              blurRadius: 5,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        columns: [
+                          DataColumn(
+                            label: Text(
+                              'User ID',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Full Name',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Action',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Total Sold',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Timestamp',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                        rows: activityLogs.map((log) {
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(log.userId),
+                                ),
+                              ),
+                              DataCell(
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(log.fullName),
+                                ),
+                              ),
+                              DataCell(
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(log.action),
+                                ),
+                              ),
+                              DataCell(
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(log.countedAmount == 0
+                                      ? ' '
+                                      : log.countedAmount.toString()),
+                                ),
+                              ),
+                              DataCell(
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(log.timestamp),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              onPressed: () {},
-              child: const Text("Generate"),
             ),
-          ),
-        ],
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                  width: double
+                      .infinity, // Makes the button take all horizontal space
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 22, 165, 221),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 100, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => PdfPage()),
+                      );
+                    },
+                    child: const Text(
+                      'Generate Reports',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 15.0,
+                      ),
+                    ),
+                  )),
+            ),
+          ],
+        ),
       ),
     );
   }

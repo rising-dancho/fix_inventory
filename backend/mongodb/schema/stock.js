@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const stockSchema = new mongoose.Schema({
   stockName: String,
   totalStock: Number,
-  sold: Number,
+  sold:  Number,
+  unitPrice: Number,
   availableStock: { type: Number, default: 0 },
 });
 

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tectags/screens/navigation/navigation_menu.dart';
+import 'package:tectags/screens/onboarding/onboarding_view.dart';
 import 'package:tectags/services/shared_prefs_service.dart';
+import 'package:tectags/services/stock_check_service.dart';
 import 'package:tectags/widgets/custom_scaffold.dart';
 import 'package:tectags/widgets/fade_route.dart';
 import 'package:tectags/screens/welcome_screen.dart';
@@ -29,11 +31,13 @@ class SplashScreenState extends State<SplashScreen>
       });
     controller.repeat(reverse: true);
     super.initState();
-
     // DURATION OF THE SPLASH SCREEN
     Timer(const Duration(seconds: 4), () {
       checkTokenAndRedirect(); // Check for token on startup
     });
+
+    // Fetch stock and check levels when the splash screen is loaded
+    _checkStockLevels();
   }
 
   @override
@@ -42,11 +46,27 @@ class SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  Future<void> _checkStockLevels() async {
+    try {
+      await StockCheckService.checkStocks();
+    } catch (e) {
+      debugPrint('Stock check error: $e');
+    }
+  }
+
   Future<void> checkTokenAndRedirect() async {
     final hasToken = await SharedPrefsService.hasValidToken();
+    final hasSeenOnboarding =
+        await SharedPrefsService.hasSeenOnboarding(); // <- check onboarding
 
-    if (hasToken) {
-      // Token exists, redirect to NavigationMenu
+    if (!hasSeenOnboarding) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          FadeRoute(page: const OnboardingView()),
+        );
+      }
+    } else if (hasToken) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -54,7 +74,6 @@ class SplashScreenState extends State<SplashScreen>
         );
       }
     } else {
-      // No token, redirect to WelcomeScreen
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -64,7 +83,7 @@ class SplashScreenState extends State<SplashScreen>
     }
 
     setState(() {
-      _isLoading = false; // Stop loading
+      _isLoading = false;
     });
   }
 

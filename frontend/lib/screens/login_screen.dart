@@ -22,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
 
   @override
-  @override
   void initState() {
     super.initState();
 
@@ -126,7 +125,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           const TextStyle(color: Color.fromRGBO(70, 70, 70, 1)),
                       prefixIcon: const Icon(Icons.lock,
                           color: Color.fromRGBO(70, 70, 70, 1)),
-                      // Suffix icon to toggle password visibility
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureText
@@ -191,19 +189,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             return;
                           }
 
-                          // Check if response is null
-                          if (response == null) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Incorrect email or password.')),
-                            );
-                            return;
-                          }
-
                           // Check for errors in the response
-                          if (response.containsKey('error') &&
+                          if (response != null &&
+                              response.containsKey('error') &&
                               response['error'] != null) {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -213,7 +201,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
 
                           // Check for token in the response
-                          if (response.containsKey('token')) {
+                          if (response != null &&
+                              response.containsKey('token')) {
                             await SharedPrefsService.saveToken(
                                 response['token'],
                                 rememberPassword); // Pass rememberPassword
@@ -249,7 +238,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor:
+                            const Color.fromARGB(255, 22, 165, 221),
                         foregroundColor: Colors.white,
                         shadowColor: Colors.grey,
                         elevation: 5,
@@ -290,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: const Text(
-                        'Register now',
+                        'Sign up',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Color.fromARGB(255, 55, 247, 253),

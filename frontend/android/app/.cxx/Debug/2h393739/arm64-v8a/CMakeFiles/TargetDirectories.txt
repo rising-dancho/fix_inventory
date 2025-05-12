@@ -1,2 +1,0 @@
-C:/Users/adfinem/Downloads/fix_inventory-main/frontend/android/app/.cxx/Debug/2h393739/arm64-v8a/CMakeFiles/edit_cache.dir
-C:/Users/adfinem/Downloads/fix_inventory-main/frontend/android/app/.cxx/Debug/2h393739/arm64-v8a/CMakeFiles/rebuild_cache.dir
