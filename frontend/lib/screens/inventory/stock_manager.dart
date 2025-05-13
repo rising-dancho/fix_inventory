@@ -81,6 +81,7 @@ class _StockManagerState extends State<StockManager> {
     if (stockCounts.containsKey(item)) {
       int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
       int totalStock = stockCounts[item]?["totalStock"] ?? 0;
+      String stockId = stockCounts[item]?["_id"].toString() ?? "";
 
       if (sellAmount > currentAvailableStock) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -98,12 +99,12 @@ class _StockManagerState extends State<StockManager> {
 
       int updatedStock = stockCounts[item]?["availableStock"] ?? 0;
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(
-      //     content:
-      //         Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
-      //   ),
-      // );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
+        ),
+      );
 
       // 🔄 Save updated stock to DB
       API.saveStockToMongoDB(stockCounts);
@@ -113,6 +114,7 @@ class _StockManagerState extends State<StockManager> {
         updatedStock,
         totalStock,
         item,
+        stockId,
       );
     }
   }
@@ -158,7 +160,7 @@ class _StockManagerState extends State<StockManager> {
 
   // INFO DISPLAYED IN THE CARDS PULLED FROM THE STOCKS COLLECTION
   Future<void> fetchStockData() async {
-    Map<String, Map<String, int>>? data = await API.fetchStockFromMongoDB();
+    Map<String, Map<String, dynamic>>? data = await API.fetchStockFromMongoDB();
     debugPrint("Fetched Stock Data: $data");
     debugPrint("STOCK COUNTS Data: $stockCounts");
 

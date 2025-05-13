@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:tectags/screens/splash_screen.dart';
 import 'package:tectags/services/notif_service.dart';
@@ -32,17 +31,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     startPeriodicStockCheck(); // Optional timer-based check
   }
 
-  // @override
-  // void didChangeAppLifecycleState(AppLifecycleState state) {
-  //   if (state == AppLifecycleState.resumed) {
-  //     StockCheckService
-  //         .checkStocks(); // Check when app comes back from background
-  //   }
-  // }
-
   void startPeriodicStockCheck() {
     _stockTimer?.cancel();
-    _stockTimer = Timer.periodic(Duration(minutes: (60*12)), (_) {
+    _stockTimer = Timer.periodic(Duration(minutes: (60*6)), (_) {
       StockCheckService.checkStocks();
     });
   }

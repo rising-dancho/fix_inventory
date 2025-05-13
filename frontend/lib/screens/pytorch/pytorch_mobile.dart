@@ -129,7 +129,7 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
   // INFO DISPLAYED IN THE CARDS PULLED FROM THE STOCKS COLLECTION
   Future<void> fetchStockData() async {
-    Map<String, Map<String, int>>? data = await API.fetchStockFromMongoDB();
+    Map<String, Map<String, dynamic>>? data = await API.fetchStockFromMongoDB();
     debugPrint("Fetched Stock Data: $data");
     debugPrint("STOCK COUNTS Data: $stockCounts");
 
@@ -661,6 +661,7 @@ class _PytorchMobileState extends State<PytorchMobile> {
     if (stockCounts.containsKey(item)) {
       int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
       int totalStock = stockCounts[item]?["totalStock"] ?? 0;
+      String stockId = stockCounts[item]?["_id"].toString() ?? "";
 
       if (sellAmount > currentAvailableStock) {
         ScaffoldMessenger.of(this.context).showSnackBar(
@@ -678,12 +679,12 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
       int updatedStock = stockCounts[item]?["availableStock"] ?? 0;
 
-      // ScaffoldMessenger.of(this.context).showSnackBar(
-      //   SnackBar(
-      //     content:
-      //         Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
-      //   ),
-      // );
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
+        ),
+      );
 
       // 🔄 Save updated stock to DB
       API.saveStockToMongoDB(stockCounts);
@@ -693,6 +694,7 @@ class _PytorchMobileState extends State<PytorchMobile> {
         updatedStock,
         totalStock,
         item,
+        stockId,
       );
     }
   }
