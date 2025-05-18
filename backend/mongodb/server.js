@@ -554,18 +554,42 @@ app.post('/api/update/restock', async (req, res) => {
   }
 });
 
-// Save stock for sold, do the calculation, and assign the price
-router.post('/update/sold-with-price', async (req, res) => {
+app.post('/api/update/sold-with-price', async (req, res) => {
   const { stockId, soldAmount, price, userId } = req.body;
 
-  try {
-    // 1. Update the sold count and unitPrice in the Stock document
-    await Stock.findByIdAndUpdate(stockId, {
-      $inc: { sold: soldAmount },
-      $set: { unitPrice: price }, // ⬅️ Update unit price here
-    });
+  if (
+    !stockId ||
+    !userId ||
+    typeof soldAmount !== 'number' ||
+    typeof price !== 'number'
+  ) {
+    return res.status(400).json({ error: 'Invalid input data' });
+  }
 
-    // 2. Log the activity (price is NOT included here, as intended)
+  if (!mongoose.Types.ObjectId.isValid(stockId)) {
+    return res.status(400).json({ error: 'Invalid stock ID' });
+  }
+
+  try {
+    const stock = await Stock.findById(stockId);
+    if (!stock) {
+      return res.status(404).json({ error: 'Stock not found' });
+    }
+
+    const updatedStock = await Stock.findByIdAndUpdate(
+      stockId,
+      {
+        $inc: {
+          sold: soldAmount,
+        },
+        $set: {
+          unitPrice: price,
+          availableStock: Math.max(0, stock.availableStock - soldAmount), // 🚨 Subtract sold from availableStock
+        },
+      },
+      { new: true }
+    );
+
     await Activity.create({
       userId,
       stockId,
@@ -573,7 +597,9 @@ router.post('/update/sold-with-price', async (req, res) => {
       countedAmount: soldAmount,
     });
 
-    res.status(200).json({ message: 'Stock updated and activity logged.' });
+    res
+      .status(200)
+      .json({ message: 'Stock updated and activity logged.', updatedStock });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -583,6 +609,8 @@ router.post('/update/sold-with-price', async (req, res) => {
 // Save stock for sold
 app.post('/api/update/sold', async (req, res) => {
   try {
+    const updatedStocks = [];
+
     for (const stockItem of req.body) {
       const updateFields = {
         totalStock: stockItem.totalStock,
@@ -590,7 +618,6 @@ app.post('/api/update/sold', async (req, res) => {
         sold: stockItem.sold,
       };
 
-      // ✅ Only include unitPrice if it's a valid number and not zero
       if (
         typeof stockItem.unitPrice === 'number' &&
         !isNaN(stockItem.unitPrice) &&
@@ -601,14 +628,17 @@ app.post('/api/update/sold', async (req, res) => {
 
       console.log('Updating:', stockItem.stockName, updateFields);
 
-      await Stock.findOneAndUpdate(
+      const updatedStock = await Stock.findOneAndUpdate(
         { stockName: stockItem.stockName },
         { $set: updateFields },
         { upsert: true, new: true }
       );
+
+      updatedStocks.push(updatedStock);
     }
 
-    res.json({ message: 'Stock updated successfully' });
+    // Send all updated stock documents in the response
+    res.json(updatedStocks);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
