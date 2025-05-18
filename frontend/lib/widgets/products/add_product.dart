@@ -4,8 +4,8 @@ import 'package:tectags/utils/label_formatter.dart';
 class AddProduct extends StatefulWidget {
   final String? initialName;
   final int? itemCount;
-  final Map<String, Map<String, int>> stockCounts;
-  final void Function(String name, int count) onAddStock;
+  final Map<String, Map<String, dynamic>> stockCounts;
+  final void Function(String name, int count, double price) onAddStock;
 
   const AddProduct({
     super.key,
@@ -22,19 +22,25 @@ class AddProduct extends StatefulWidget {
 class _AddProductState extends State<AddProduct> {
   TextEditingController itemController = TextEditingController();
   TextEditingController countController = TextEditingController();
-  // TextEditingController priceController = TextEditingController();
+  TextEditingController priceController = TextEditingController();
   // form validation
   final _formKey = GlobalKey<FormState>();
 
+  // Hollow_blocks
+  // Rebar
+  // Sack_Of_Bistay_Sand
+  // Sack_Of_Cement
+  // Sack_Of_Gravel
+  // Sack_Of_Skim_Coat
+
   // FOR DROP DOWN
   final List<String> allItems = [
-    'Bistay Sand',
-    'Cement',
-    'Gravel',
     'Hollow Blocks',
-    'Nails',
     'Rebar',
-    'Skim Coat',
+    'Sack Of Bistay Sand',
+    'Sack Of Cement',
+    'Sack Of Gravel',
+    'Sack Of Skim Coat',
   ];
   // FOR DROP DOWN
   String? selectedItem;
@@ -59,12 +65,15 @@ class _AddProductState extends State<AddProduct> {
     }
     String itemName = LabelFormatter.titleCase(rawItemName);
     int? itemCount = int.tryParse(countController.text.trim());
+    double? price = double.tryParse(priceController.text.trim());
 
-    if (itemName.isNotEmpty && itemCount != null) {
-      widget.onAddStock(itemName, itemCount);
+    if (itemName.isNotEmpty && itemCount != null && price != null) {
+      widget.onAddStock(itemName, itemCount, price); // Notify parent
+
       // Clear fields after adding
       selectedItem = null; // Clear selected item
       countController.clear();
+      priceController.clear();
       Navigator.pop(context);
     }
   }
@@ -131,31 +140,6 @@ class _AddProductState extends State<AddProduct> {
               ],
             ),
             const SizedBox(height: 22),
-            // TextFormField(
-            //   controller: itemController,
-            //   validator: (value) {
-            //     if (value == null || value.isEmpty) {
-            //       return 'Please enter the stock name';
-            //     }
-            //     return null;
-            //   },
-            //   decoration: InputDecoration(
-            //     labelText: 'Stock Name',
-            //     labelStyle: TextStyle(
-            //       color: Colors.grey[700], // default color
-            //     ),
-            //     floatingLabelStyle: TextStyle(
-            //       color:
-            //           Color(0xFF416FDF), // 👈 color when the field is focused
-            //     ),
-            //     hintText: 'Please enter the stock name',
-            //     hintStyle: const TextStyle(color: Colors.black26),
-            //     fillColor: Colors.grey[200],
-            //     filled: true,
-            //     border: InputBorder.none,
-            //     // prefixIcon: Icon(Icons.new_label),
-            //   ),
-            // ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
               decoration: BoxDecoration(
@@ -202,7 +186,6 @@ class _AddProductState extends State<AddProduct> {
                     Colors.grey[100], // Optional: Dropdown popup background
               ),
             ),
-
             const SizedBox(height: 10),
             TextFormField(
               controller: countController,
@@ -231,35 +214,39 @@ class _AddProductState extends State<AddProduct> {
               ),
             ),
             const SizedBox(height: 10),
-            // TextFormField(
-            //   controller: priceController,
-            //   keyboardType: TextInputType.numberWithOptions(decimal: true),
-            //   validator: (value) {
-            //     return null;
-            //   },
-            //   decoration: InputDecoration(
-            //     labelText: 'Stock Price',
-            //     labelStyle: TextStyle(
-            //       color: Colors.grey[700], // default color
-            //     ),
-            //     floatingLabelStyle: TextStyle(
-            //       color:
-            //           Color(0xFF416FDF), // 👈 color when the field is focused
-            //     ),
-            //     hintText: 'Please enter the stock price',
-            //     hintStyle: const TextStyle(color: Colors.black26),
-            //     fillColor: Colors.grey[200],
-            //     filled: true,
-            //     border: InputBorder.none,
-            //     // prefixIcon: Icon(Icons.payments),
-            //   ),
-            // ),
+            TextFormField(
+              controller: priceController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Required: Please enter the price per item/unit';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                labelText: 'Price per Unit',
+                labelStyle: TextStyle(
+                  color: Colors.grey[700], // default color
+                ),
+                floatingLabelStyle: TextStyle(
+                  color:
+                      Color(0xFF416FDF), // 👈 color when the field is focused
+                ),
+                hintText: 'Please enter the price per item/unit',
+                hintStyle: const TextStyle(color: Colors.black26),
+                fillColor: Colors.grey[200],
+                filled: true,
+                border: InputBorder.none,
+                // prefixIcon: Icon(Icons.payments),
+              ),
+            ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(255, 22, 165, 221),
+                  // backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
@@ -273,7 +260,7 @@ class _AddProductState extends State<AddProduct> {
                   }
                 },
                 child: const Text(
-                  'SAVE',
+                  'ADD',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Roboto',

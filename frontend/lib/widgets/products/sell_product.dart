@@ -15,10 +15,10 @@ class SellProduct extends StatefulWidget {
   });
 
   @override
-  State<SellProduct> createState() => _RestockProductState();
+  State<SellProduct> createState() => _SellProductState();
 }
 
-class _RestockProductState extends State<SellProduct> {
+class _SellProductState extends State<SellProduct> {
   late TextEditingController _sellController;
   bool isLoading = false;
 
@@ -69,13 +69,26 @@ class _RestockProductState extends State<SellProduct> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Sell ${widget.itemName}',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                  color: Colors.grey[800],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sell',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    widget.itemName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
               ),
               Container(
                 decoration: BoxDecoration(
@@ -92,20 +105,32 @@ class _RestockProductState extends State<SellProduct> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           TextField(
             controller: _sellController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: "Enter amount to sell",
               labelStyle: TextStyle(
-                color: Colors.grey[700], // default color
+                color: Colors.grey[700], // Default (unfocused) label color
+              ),
+              floatingLabelStyle: TextStyle(
+                color: Color(0xFF416FDF), // Focused label color
+                // fontWeight: FontWeight.w600,
               ),
               hintText: "e.g. 50",
               hintStyle: const TextStyle(color: Colors.black26),
               filled: true,
               fillColor: Colors.grey[200],
               border: InputBorder.none,
+              // focusedBorder: OutlineInputBorder(
+              //   borderSide: BorderSide(color: Colors.blue, width: 2.0),
+              //   borderRadius: BorderRadius.circular(8.0),
+              // ),
+              // enabledBorder: OutlineInputBorder(
+              //   borderSide: BorderSide(color: Colors.transparent),
+              //   borderRadius: BorderRadius.circular(8.0),
+              // ),
             ),
           ),
           const SizedBox(height: 20),
@@ -115,6 +140,7 @@ class _RestockProductState extends State<SellProduct> {
               onPressed: isLoading ? null : restockItem,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 22, 165, 221),
+                // backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 100, vertical: 15),

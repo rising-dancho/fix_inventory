@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Map<String, dynamic>? response;
                           try {
                             response = await API.loginUser(data);
-                            debugPrint("API Response: $response"); // Debug log
+                            debugPrint("API LOGIN Response: $response"); // Debug log
                           } catch (e) {
                             debugPrint("Error during login: $e"); // Debug log
                             if (!mounted) return;
@@ -203,15 +203,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           // Check for token in the response
                           if (response != null &&
                               response.containsKey('token')) {
+                            // await SharedPrefsService.saveToken(
+                            //     response['token'],
+                            //     rememberPassword); // Pass rememberPassword
+                            // FOR TESTING`
                             await SharedPrefsService.saveToken(
                                 response['token'],
-                                rememberPassword); // Pass rememberPassword
+                                true); // Pass rememberPassword
+
+                            String? savedToken =
+                                await SharedPrefsService.getToken();
+                            debugPrint("Saved token: $savedToken");
 
                             // Save userId in SharedPreferences
-
                             if (response.containsKey('userId')) {
                               await SharedPrefsService.saveUserId(
                                   response['userId']);
+                            }
+
+                            // ✅ Save user role
+                            if (response.containsKey('role')) {
+                              await SharedPrefsService.setRole(
+                                  response['role']);
+                              debugPrint("Saved role: ${response['role']}");
                             }
 
                             if (!mounted) return;

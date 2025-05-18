@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+// import 'package:tectags/models/stockdata_model.dart';
 import 'package:tectags/services/api.dart';
 import 'package:tectags/utils/label_formatter.dart';
 import 'package:tectags/widgets/products/restock_product.dart';
 
 class AddNewProduct extends StatefulWidget {
-  final void Function(String name, int count, int sold) onAddStock;
+  final void Function(String name, int count, int sold, double price)
+      onAddStock;
   final String? initialName;
   final int? itemCount;
   final String actionType; // "sell" or "restock"
@@ -25,11 +27,12 @@ class _AddNewProductState extends State<AddNewProduct> {
   TextEditingController nameController = TextEditingController();
   TextEditingController countController = TextEditingController();
   TextEditingController soldController = TextEditingController();
-  // TextEditingController priceController = TextEditingController();
+  TextEditingController priceController = TextEditingController();
+
   // form validation
   final _formKey = GlobalKey<FormState>();
   // FOR RESTOCKING
-  Map<String, Map<String, int>> stockCounts = {};
+  Map<String, Map<String, dynamic>> stockCounts = {};
 
   @override
   void initState() {
@@ -53,12 +56,16 @@ class _AddNewProductState extends State<AddNewProduct> {
     String rawItemName = nameController.text.trim();
     String itemName = LabelFormatter.titleCase(rawItemName);
     int? itemCount = int.tryParse(countController.text.trim());
+    double? price = double.tryParse(priceController.text.trim());
 
-    if (itemName.isNotEmpty && itemCount != null) {
+    if (itemName.isNotEmpty && itemCount != null && price != null) {
       int itemSold = int.tryParse(soldController.text.trim()) ?? 0;
-      widget.onAddStock(itemName, itemCount, itemSold); // Notify parent
+      widget.onAddStock(itemName, itemCount, itemSold, price); // Notify parent
+
+      // Clear fields after adding
       nameController.clear();
       countController.clear();
+      priceController.clear();
       Navigator.pop(context); // Dismiss modal after adding
     }
   }
@@ -86,19 +93,21 @@ class _AddNewProductState extends State<AddNewProduct> {
     );
   }
 
-  void updateStock(String item, int restockAmount) {
-    if (stockCounts.containsKey(item)) {
+  void updateStock(String initialName, int restockAmount) {
+    if (stockCounts.containsKey(initialName)) {
       setState(() {
-        int currentTotalStock = stockCounts[item]?["totalStock"] ?? 0;
-        int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
+        int currentTotalStock = stockCounts[initialName]?["totalStock"] ?? 0;
+        int currentAvailableStock =
+            stockCounts[initialName]?["availableStock"] ?? 0;
 
-        stockCounts[item]?["totalStock"] = currentTotalStock + restockAmount;
-        stockCounts[item]?["availableStock"] =
+        stockCounts[initialName]?["totalStock"] =
+            currentTotalStock + restockAmount;
+        stockCounts[initialName]?["availableStock"] =
             currentAvailableStock + restockAmount;
         // 🔥 sold does NOT change
       });
 
-      API.saveStockToMongoDB(stockCounts);
+      API.saveSingleStockToMongoDB(initialName, stockCounts[initialName]!);
     }
   }
 
@@ -239,38 +248,39 @@ class _AddNewProductState extends State<AddNewProduct> {
                     ),
                   ),
             const SizedBox(height: 10),
-            // TextFormField(
-            //   controller: priceController,
-            //   keyboardType: TextInputType.numberWithOptions(decimal: true),
-            //   validator: (value) {
-            //     // if (value == null || value.isEmpty) {
-            //     //   return 'Required: Please enter the price';
-            //     // }
-            //     return null;
-            //   },
-            //   decoration: InputDecoration(
-            //     labelText: 'Price',
-            //     labelStyle: TextStyle(
-            //       color: Colors.grey[700], // default color
-            //     ),
-            //     floatingLabelStyle: TextStyle(
-            //       color:
-            //           Color(0xFF416FDF), // 👈 color when the field is focused
-            //     ),
-            //     hintText: 'Please enter the stock price',
-            //     hintStyle: const TextStyle(color: Colors.black26),
-            //     fillColor: Colors.grey[200],
-            //     filled: true,
-            //     border: InputBorder.none,
-            //     // prefixIcon: Icon(Icons.payments),
-            //   ),
-            // ),
+            TextFormField(
+              controller: priceController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Required: Please enter the price per item/unit';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                labelText: 'Price per Unit',
+                labelStyle: TextStyle(
+                  color: Colors.grey[700], // default color
+                ),
+                floatingLabelStyle: TextStyle(
+                  color:
+                      Color(0xFF416FDF), // 👈 color when the field is focused
+                ),
+                hintText: 'Please enter the price per item/unit',
+                hintStyle: const TextStyle(color: Colors.black26),
+                fillColor: Colors.grey[200],
+                filled: true,
+                border: InputBorder.none,
+                // prefixIcon: Icon(Icons.payments),
+              ),
+            ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(255, 22, 165, 221),
+                  // backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
@@ -284,7 +294,7 @@ class _AddNewProductState extends State<AddNewProduct> {
                   }
                 },
                 child: const Text(
-                  'SAVE',
+                  'ADD',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Roboto',

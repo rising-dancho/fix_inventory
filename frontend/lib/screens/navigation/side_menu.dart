@@ -4,21 +4,32 @@ import 'package:tectags/screens/guide_screen.dart';
 import 'package:tectags/screens/login_screen.dart';
 import 'package:tectags/screens/navigation/navigation_menu.dart';
 import 'package:tectags/screens/onboarding/onboarding_view.dart';
-import 'package:tectags/screens/otp/pages/otp_login.dart';
 import 'package:tectags/screens/profile_screen.dart';
+import 'package:tectags/screens/role_management/role_management_screen.dart';
 import 'package:tectags/services/shared_prefs_service.dart';
+import 'package:tectags/screens/dashboard_screen.dart';
 
 class SideMenu extends StatelessWidget {
   const SideMenu({super.key});
 
   Future<void> logout(BuildContext context) async {
-    await SharedPrefsService.clearUserId(); // Clear user ID
-    await SharedPrefsService
-        .clearToken(); // Clear token for remembering login state
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
+    // Clear all relevant shared preferences first
+    await SharedPrefsService.clearUserId();
+    await SharedPrefsService.clearToken();
+    await SharedPrefsService.clearRole();
+
+    // Ensure we're on the UI thread after async ops, then navigate
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  Future<String?> _getRole() async {
+    return await SharedPrefsService.getRole();
   }
 
   @override
@@ -48,6 +59,16 @@ class SideMenu extends StatelessWidget {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const NavigationMenu()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Dashboard'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => DashboardScreen()),
               );
             },
           ),
@@ -91,6 +112,33 @@ class SideMenu extends StatelessWidget {
           //     );
           //   },
           // ),
+          // Conditionally show Roles tile only for manager
+          FutureBuilder<String?>(
+            future: _getRole(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(); // or a small loader if you want
+              }
+
+              final role = snapshot.data ?? '';
+
+              if (role == 'manager') {
+                return ListTile(
+                  leading: const Icon(Icons.lock),
+                  title: const Text('Roles'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => UserManagementScreen()),
+                    );
+                  },
+                );
+              } else {
+                return const SizedBox.shrink(); // Hide for others
+              }
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('About'),

@@ -64,13 +64,26 @@ class _RestockProductState extends State<RestockProduct> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Restock ${widget.itemName}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                  color: Colors.grey[800],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Restock',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    widget.itemName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
               ),
               Container(
                 decoration: BoxDecoration(
@@ -87,29 +100,42 @@ class _RestockProductState extends State<RestockProduct> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           TextField(
             controller: _restockController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: "Enter restock amount",
               labelStyle: TextStyle(
-                color: Colors.grey[700], // default color
+                color: Colors.grey[700], // Default (unfocused) label color
+              ),
+              floatingLabelStyle: TextStyle(
+                color: Color(0xFF416FDF), // Focused label color
+                // fontWeight: FontWeight.w600,
               ),
               hintText: "e.g. 100",
               hintStyle: const TextStyle(color: Colors.black26),
               filled: true,
               fillColor: Colors.grey[200],
               border: InputBorder.none,
+              // focusedBorder: OutlineInputBorder(
+              //   borderSide: BorderSide(color: Colors.blue, width: 2.0),
+              //   borderRadius: BorderRadius.circular(8.0),
+              // ),
+              // enabledBorder: OutlineInputBorder(
+              //   borderSide: BorderSide(color: Colors.transparent),
+              //   borderRadius: BorderRadius.circular(8.0),
+              // ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: isLoading ? null : restockItem,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 22, 165, 221),
+                // backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 100, vertical: 15),

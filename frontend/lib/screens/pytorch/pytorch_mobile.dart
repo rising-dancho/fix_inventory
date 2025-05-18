@@ -21,6 +21,7 @@ import 'package:intl/intl.dart';
 
 // PYTORCH
 import 'package:pytorch_lite/pytorch_lite.dart';
+import 'package:tectags/services/shared_prefs_service.dart';
 import 'package:tectags/utils/label_formatter.dart';
 import 'package:tectags/utils/stock_notifier.dart';
 // import 'package:tectags/utils/sell_restock_helper.dart';
@@ -74,7 +75,7 @@ class _PytorchMobileState extends State<PytorchMobile> {
   List<String> stockList = []; // Your fixed list
   List<String> detectedStockList = []; // Dynamic from detection
   List<String> allStocks = []; // Merged unique values
-  Map<String, Map<String, int>> stockCounts = {};
+  Map<String, Map<String, dynamic>> stockCounts = {};
 
   // PREVENT MULTIPLE REENTRY FOR OPENING ADD PRODUCT MODAL
   bool _isAddProductModalOpen = false;
@@ -141,9 +142,12 @@ class _PytorchMobileState extends State<PytorchMobile> {
     if (mounted) {
       setState(() {
         stockCounts = data.map((key, value) => MapEntry(key, {
+              "_id": value["_id"], // ✅ Keep the stock ID
               "availableStock": value["availableStock"] ?? 0,
               "totalStock": value["totalStock"] ?? 0,
               "sold": value["sold"] ?? 0,
+              "price":
+                  value["unitPrice"] ?? 0.0, // optional: also store unitPrice
             }));
       });
       debugPrint("Updated StockCounts: $stockCounts");
@@ -192,13 +196,13 @@ class _PytorchMobileState extends State<PytorchMobile> {
     // Check for mid confidence (between 0.4 and 0.49)
     bool hasMidConfidence = objDetect.any((element) {
       final score = element?.score ?? 0.0;
-      return score >= 0.4 && score < 0.5;
+      return score >= 0.5 && score < 0.6;
     });
 
 // Check for very low confidence (0.39 or lower)
     bool hasLowConfidence = objDetect.every((element) {
       final score = element?.score ?? 0.0;
-      return score < 0.4;
+      return score < 0.5;
     });
 
 // Define function to show the top snackbar
@@ -291,8 +295,8 @@ class _PytorchMobileState extends State<PytorchMobile> {
           ],
         ),
         Text(
-          'No detectable objects matched the expected categories.\n'
-          'Please ensure the object is clearly visible, well-lit, and within the camera frame. Try again!',
+          'No relevant objects detected.\n'
+          'Please ensure the objects are clearly visible, well-lit, and within the camera frame. Try again!',
           style: TextStyle(color: Colors.grey[900], fontSize: 18),
         ),
       );
@@ -557,79 +561,120 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
   Future<void> _openSellOrRestockProductModal(
     BuildContext context, {
-    required String actionType, // 👈 now passed in directly
+    required String actionType,
     String? initialName,
     int? itemCount,
     int? initialAmount,
   }) async {
-    if (_isAddProductModalOpen) return; // Prevent multiple opens
-
-    // Otherwise, handle restocking or selling for existing stock
-    if (actionType == "restock") {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (modalContext) {
-          return AddProduct(
-            initialName: initialName,
-            itemCount: itemCount,
-            stockCounts: stockCounts,
-            onAddStock: (itemName, count) async {
-              setState(() {
-                // Update stock with the new count for the item
-                stockCounts[itemName] = {
-                  "availableStock": count,
-                  "totalStock": count,
-                  "sold": 0,
-                };
-              });
-              // Save updated stock to the database
-              await API.saveStockToMongoDB(stockCounts);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Stock added successfully!")),
-              );
-            },
-          );
-        },
-      );
-      return; // Exit early so we don't show the AddNewProduct modal below
-    }
-
+    if (_isAddProductModalOpen) return;
     _isAddProductModalOpen = true;
-    if (actionType == "sell") {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (modalContext) {
-          return Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom),
-            child: SingleChildScrollView(
-              child: AddNewProduct(
+
+    try {
+      if (actionType == "restock") {
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (modalContext) {
+            return AddProduct(
+              initialName: initialName,
+              itemCount: itemCount,
+              stockCounts: stockCounts,
+              onAddStock: (itemName, count, double price) async {
+                setState(() {
+                  final existingStock = stockCounts[itemName] ?? {};
+                  stockCounts[itemName] = {
+                    "availableStock": count,
+                    "totalStock": count,
+                    "sold": existingStock["sold"] ?? 0,
+                    "price": price,
+                  };
+                });
+
+                await API.saveSingleStockToMongoDB(
+                    itemName, stockCounts[itemName]!);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Stock added successfully!")),
+                );
+              },
+            );
+          },
+        );
+      } else if (actionType == "sell") {
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (modalContext) {
+            return AddNewProduct(
                 initialName: initialName,
                 itemCount: itemCount,
                 actionType: actionType,
-                onAddStock: (String name, int count, int sold) async {
+                onAddStock:
+                    (String itemName, int count, int sold, double price) async {
                   setState(() {
-                    stockCounts[name] = {
+                    final existingStock = stockCounts[itemName] ?? {};
+                    stockCounts[itemName] = {
                       "availableStock": count,
                       "totalStock": count,
                       "sold": sold,
+                      "price": price,
+                      ...existingStock,
                     };
                   });
-                  await API.saveStockToMongoDB(stockCounts);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text("Stock and Image saved successfully!")),
+
+                  final stockData = stockCounts[itemName];
+
+                  // ✅ Get the actual stock ID from stored data
+                  final stockId = stockData?['_id'];
+
+                  // 🛑 Fallback if stockId is missing
+                  if (stockId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text("Error: Stock ID not found for $itemName.")),
+                    );
+                    return;
+                  }
+
+                  // ✅ Get userId from your auth service
+                  final userId = await SharedPrefsService.getUserId();
+
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              "Error: User ID is missing. Please log in again.")),
+                    );
+                    return;
+                  }
+
+                  final result = await API.saveSoldStockWithPrice(
+                    stockId,
+                    sold,
+                    price,
+                    userId,
                   );
-                },
-              ),
-            ),
-          );
-        },
-      ).whenComplete(() {
-        _isAddProductModalOpen = false;
-      });
+
+                  if (result.isSuccess) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text("Stock and price updated successfully!")),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              "Failed to update stock: ${result.errorMessage ?? 'Unknown error'}")),
+                    );
+                  }
+                });
+          },
+        );
+      }
+    } finally {
+      _isAddProductModalOpen = false; // Always reset this
     }
   }
 
@@ -679,17 +724,10 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
       int updatedStock = stockCounts[item]?["availableStock"] ?? 0;
 
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
-        ),
-      );
+      // ✅ Save ONLY this updated item
+      API.saveSingleStockToMongoDB(item, stockCounts[item]!);
 
-      // 🔄 Save updated stock to DB
-      API.saveStockToMongoDB(stockCounts);
-
-      // ✅ Call centralized stock checker
+      // ✅ Trigger stock alert if needed
       StockNotifier.checkStockAndNotify(
         updatedStock,
         totalStock,
@@ -728,14 +766,16 @@ class _PytorchMobileState extends State<PytorchMobile> {
       setState(() {
         int currentTotalStock = stockCounts[item]?["totalStock"] ?? 0;
         int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
+        double currentPrice = stockCounts[item]?["price"] ?? 0.0;
 
         stockCounts[item]?["totalStock"] = currentTotalStock + restockAmount;
         stockCounts[item]?["availableStock"] =
             currentAvailableStock + restockAmount;
+        stockCounts[item]?["price"] = currentPrice; // Forcefully preserve price
         // 🔥 sold does NOT change
       });
 
-      API.saveStockToMongoDB(stockCounts);
+      API.saveSingleStockToMongoDB(item, stockCounts[item]!);
     }
   }
 
@@ -1067,3 +1107,6 @@ class _PytorchMobileState extends State<PytorchMobile> {
 
 // FIX THE RESTOCK AND SELL WHEN SELECTED ITEM IS ALREADY IN THE LIST
 // https://chatgpt.com/share/681bf782-5edc-8000-a65f-da0de57fe2f3
+
+// (FIX THIS) UPDATE THE stockCount Maps to make use of the stockdata_model FOR LONG TERM TYPING FIX instead of setting the Map to dynamic: eg. like this: Map<String, Map<String, StockData>> stockCounts = {};
+// https://chatgpt.com/share/68238d44-4950-8000-8ef4-4e71aaec7f3a

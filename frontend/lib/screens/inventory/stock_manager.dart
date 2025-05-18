@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:tectags/screens/navigation/side_menu.dart';
 import 'package:tectags/services/api.dart';
 import 'package:tectags/services/stock_check_service.dart';
@@ -6,6 +7,7 @@ import 'package:tectags/utils/stock_notifier.dart';
 import 'package:tectags/widgets/products/add_product.dart';
 import 'package:tectags/widgets/products/restock_product.dart';
 import 'package:tectags/widgets/products/sell_product.dart';
+import 'package:tectags/widgets/products/update_stock_price.dart';
 
 class StockManager extends StatefulWidget {
   const StockManager({super.key});
@@ -15,7 +17,7 @@ class StockManager extends StatefulWidget {
 }
 
 class _StockManagerState extends State<StockManager> {
-  Map<String, Map<String, int>> stockCounts = {};
+  Map<String, Map<String, dynamic>> stockCounts = {};
   TextEditingController searchController = TextEditingController();
   String searchQuery = '';
 
@@ -39,15 +41,17 @@ class _StockManagerState extends State<StockManager> {
             child: SingleChildScrollView(
                 child: AddProduct(
               stockCounts: stockCounts,
-              onAddStock: (String initialName, int count) {
+              onAddStock: (String initialName, int count, double price) {
                 setState(() {
                   stockCounts[initialName] = {
                     "availableStock": count,
                     "totalStock": count,
                     "sold": 0,
+                    "price": price,
                   };
                 });
-                API.saveStockToMongoDB(stockCounts);
+                API.saveSingleStockToMongoDB(
+                    initialName, stockCounts[initialName]!);
               },
             )));
       },
@@ -77,11 +81,11 @@ class _StockManagerState extends State<StockManager> {
     );
   }
 
-  void updateStockForSale(String item, int sellAmount) {
-    if (stockCounts.containsKey(item)) {
-      int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
-      int totalStock = stockCounts[item]?["totalStock"] ?? 0;
-      String stockId = stockCounts[item]?["_id"].toString() ?? "";
+  void updateStockForSale(String itemName, int sellAmount) {
+    if (stockCounts.containsKey(itemName)) {
+      int currentAvailableStock = stockCounts[itemName]?["availableStock"] ?? 0;
+      int totalStock = stockCounts[itemName]?["totalStock"] ?? 0;
+      String stockId = stockCounts[itemName]?["_id"].toString() ?? "";
 
       if (sellAmount > currentAvailableStock) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,32 +95,54 @@ class _StockManagerState extends State<StockManager> {
       }
 
       setState(() {
-        stockCounts[item]?["availableStock"] =
+        stockCounts[itemName]?["availableStock"] =
             currentAvailableStock - sellAmount;
-        stockCounts[item]?["sold"] =
-            (stockCounts[item]?["sold"] ?? 0) + sellAmount;
+        stockCounts[itemName]?["sold"] =
+            (stockCounts[itemName]?["sold"] ?? 0) + sellAmount;
       });
 
-      int updatedStock = stockCounts[item]?["availableStock"] ?? 0;
+      int updatedStock = stockCounts[itemName]?["availableStock"] ?? 0;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text('Sold $sellAmount $item(s). Remaining stock: $updatedStock'),
+              Text('Sold $sellAmount $itemName(s). Remaining stock: $updatedStock'),
         ),
       );
 
       // 🔄 Save updated stock to DB
-      API.saveStockToMongoDB(stockCounts);
+      API.saveSingleStockToMongoDB(itemName, stockCounts[itemName]!);
 
       // ✅ Call centralized stock checker
       StockNotifier.checkStockAndNotify(
         updatedStock,
         totalStock,
-        item,
+        itemName,
         stockId,
       );
     }
+  }
+
+  void _openUpdatePriceModal(
+      BuildContext context, String item, double currentPrice) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return UpdateStockPriceDialog(
+          itemName: item,
+          initialPrice: currentPrice,
+          onPriceUpdated: (newPrice) {
+            setState(() {
+              if (stockCounts.containsKey(item)) {
+                stockCounts[item]!["price"] = newPrice;
+              }
+            });
+            debugPrint("Updated price for $item: ₱$newPrice");
+          },
+        );
+      },
+    );
   }
 
   void _openRestockStockModal(BuildContext context, String item) {
@@ -142,19 +168,19 @@ class _StockManagerState extends State<StockManager> {
     );
   }
 
-  void updateStock(String item, int restockAmount) {
-    if (stockCounts.containsKey(item)) {
+  void updateStock(String itemName, int restockAmount) {
+    if (stockCounts.containsKey(itemName)) {
       setState(() {
-        int currentTotalStock = stockCounts[item]?["totalStock"] ?? 0;
-        int currentAvailableStock = stockCounts[item]?["availableStock"] ?? 0;
+        int currentTotalStock = stockCounts[itemName]?["totalStock"] ?? 0;
+        int currentAvailableStock = stockCounts[itemName]?["availableStock"] ?? 0;
 
-        stockCounts[item]?["totalStock"] = currentTotalStock + restockAmount;
-        stockCounts[item]?["availableStock"] =
+        stockCounts[itemName]?["totalStock"] = currentTotalStock + restockAmount;
+        stockCounts[itemName]?["availableStock"] =
             currentAvailableStock + restockAmount;
         // 🔥 sold does NOT change
       });
 
-      API.saveStockToMongoDB(stockCounts);
+      API.saveSingleStockToMongoDB(itemName, stockCounts[itemName]!);
     }
   }
 
@@ -165,9 +191,14 @@ class _StockManagerState extends State<StockManager> {
     debugPrint("STOCK COUNTS Data: $stockCounts");
 
     if (data == null) {
-      debugPrint("⚠️ No stock data fetshed.");
+      debugPrint("⚠️ No stock data fetched.");
       return; // Exit early if data is null
     }
+
+    // Optional: print each stock item
+    data.forEach((key, value) {
+      debugPrint("PRICE HERE!!: $key => $value");
+    });
 
     if (mounted) {
       setState(() {
@@ -175,6 +206,7 @@ class _StockManagerState extends State<StockManager> {
               "availableStock": value["availableStock"] ?? 0,
               "totalStock": value["totalStock"] ?? 0,
               "sold": value["sold"] ?? 0,
+              "price": value["unitPrice"] ?? 0.0, // PRICE
             }));
       });
       debugPrint("Updated StockCounts: $stockCounts");
@@ -375,12 +407,39 @@ class _StockManagerState extends State<StockManager> {
                                   ),
                                   Padding(
                                     padding: EdgeInsets.only(right: 15),
-                                    child: Text("Total: $totalStock",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          // fontWeight: FontWeight.w500,
-                                          color: Colors.grey[700],
-                                        )),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              "",
+                                              textAlign: TextAlign.start,
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey[800],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text("Total: $totalStock",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            )),
+                                        SizedBox(height: 4),
+                                        Text(
+                                            "₱${stockCounts[item]?["price"]?.toStringAsFixed(2) ?? '0.00'}",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            )),
+                                      ],
+                                    ),
                                   ),
                                   PopupMenuButton<String>(
                                     icon: Icon(Icons.more_horiz),
@@ -389,6 +448,11 @@ class _StockManagerState extends State<StockManager> {
                                         _openRestockStockModal(context, item);
                                       } else if (value == 'sell') {
                                         _openSellStockModal(context, item);
+                                      } else if (value == 'price') {
+                                        double currentPrice =
+                                            stockCounts[item]?["price"] ?? 0.0;
+                                        _openUpdatePriceModal(
+                                            context, item, currentPrice);
                                       } else if (value == 'delete') {
                                         showDialog(
                                           context: context,
@@ -485,11 +549,10 @@ class _StockManagerState extends State<StockManager> {
                                         ),
                                       ),
                                       PopupMenuItem(
-                                        value: 'delete',
+                                        value: 'price',
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            color: Colors.red[
-                                                50], // light red background for delete
+                                            color: Colors.deepOrange[50],
                                             borderRadius:
                                                 BorderRadius.circular(5),
                                           ),
@@ -497,9 +560,52 @@ class _StockManagerState extends State<StockManager> {
                                               vertical: 8, horizontal: 4),
                                           child: Row(
                                             children: [
-                                              Icon(Icons.delete_rounded,
-                                                  color: Colors.red[400]),
-                                              SizedBox(width: 8),
+                                              SizedBox(width: 4),
+                                              SvgPicture.asset(
+                                                'assets/icons/money.svg',
+                                                width: 18,
+                                                height: 18,
+                                                colorFilter: ColorFilter.mode(
+                                                  Colors.deepOrange[
+                                                      400]!, // Use bang operator (!) since deepOrange[400] returns a Color?
+                                                  BlendMode.srcIn,
+                                                ),
+                                              ),
+                                              SizedBox(width: 7),
+                                              Text('Price',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Roboto',
+                                                    // fontSize: 15.0,
+                                                    fontWeight: FontWeight.w400,
+                                                  )),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.red[50],
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 4),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(width: 4),
+                                              SvgPicture.asset(
+                                                'assets/icons/trash.svg',
+                                                width: 20,
+                                                height: 20,
+                                                colorFilter: ColorFilter.mode(
+                                                  Colors.red[
+                                                      400]!, // Use bang operator (!) since deepOrange[400] returns a Color?
+                                                  BlendMode.srcIn,
+                                                ),
+                                              ),
+                                              SizedBox(width: 7),
                                               Text('Delete',
                                                   style: TextStyle(
                                                     fontFamily: 'Roboto',

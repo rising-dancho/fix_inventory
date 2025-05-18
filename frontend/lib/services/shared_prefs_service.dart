@@ -6,6 +6,24 @@ class SharedPrefsService {
     return await SharedPreferences.getInstance();
   }
 
+  // ----------------- ROLE MANAGEMENT -----------------
+
+  static const String _roleKey = 'role';
+  static Future<void> setRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_roleKey, role);
+  }
+
+  static Future<String?> getRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_roleKey);
+  }
+
+  static Future<void> clearRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_roleKey);
+  }
+
   // ----------------- TOKEN MANAGEMENT -----------------
   static Future<bool> hasValidToken() async {
     final prefs = await _getPrefs();
